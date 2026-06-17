@@ -6,7 +6,7 @@ export const userSchema = z.object({
 	id: z.uuid(),
 	name: z.string().min(2),
 	email: z.email(),
-	avatarUrl: z.url(),
+	avatarUrl: z.url().nullable(),
 	birthDate: z.iso.date(),
 	role: roleEnum,
 });

@@ -4,7 +4,7 @@ import { coreApiRequest, type ApiRequestOptions } from "./coreApiRequest";
 
 const axiosPublic = axios.create({
 	baseURL: CONFIG.API_BASE_URL,
-	timeout: 5000,
+	timeout: CONFIG.TIMEOUT,
 	withCredentials: true,
 	headers: {
 		"Content-Type": "application/json",

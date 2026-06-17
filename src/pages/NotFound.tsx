@@ -2,17 +2,12 @@ import { Button } from "@/shared/components/ui/button";
 import { ArrowLeftIcon, HomeIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
-import { useMemo } from "react";
 import CONFIG from "@/core/config/constants";
 import { APP_ROUTES } from "@/core/routes/paths";
 
 export default function NotFound() {
 	const navigate = useNavigate();
-	const title = useMemo(
-		() => `404 Error - Page Missing | ${CONFIG.APP_NAME}`,
-		[],
-	);
-	useDocumentTitle(title);
+	useDocumentTitle(`404 Error - Page Missing | ${CONFIG.APP_NAME}`);
 
 	return (
 		<main className="grid h-svh min-h-full w-screen place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8 dark:bg-gray-900">
@@ -28,32 +23,28 @@ export default function NotFound() {
 				</p>
 
 				<div className="mt-10 flex items-center justify-center gap-x-6">
-					<div>
-						<Button asChild>
-							<Link to={APP_ROUTES.HOME}>
-								<HomeIcon
-									className="-ms-1 opacity-60"
-									size={16}
-									aria-hidden="true"
-								/>
-								Go back home
-							</Link>
-						</Button>
-					</div>
-					<div>
-						<Button
-							variant="outline"
-							className="group cursor-pointer"
-							onClick={() => navigate(-1)}
-						>
-							<ArrowLeftIcon
-								className="-ms-1 opacity-60 transition-transform group-hover:-translate-x-0.5"
+					<Button asChild>
+						<Link to={APP_ROUTES.HOME}>
+							<HomeIcon
+								className="-ms-1 opacity-60"
 								size={16}
 								aria-hidden="true"
 							/>
-							Go back
-						</Button>
-					</div>
+							Go back home
+						</Link>
+					</Button>
+					<Button
+						variant="outline"
+						className="group cursor-pointer"
+						onClick={() => navigate(-1)}
+					>
+						<ArrowLeftIcon
+							className="-ms-1 opacity-60 transition-transform group-hover:-translate-x-0.5"
+							size={16}
+							aria-hidden="true"
+						/>
+						Go back
+					</Button>
 				</div>
 			</div>
 		</main>

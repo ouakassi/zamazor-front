@@ -1,14 +1,70 @@
 import { API_ENDPOINTS } from "@/core/routes/paths";
 import { publicApiRequest } from "@/shared/utils/axiosPublic";
-import { clearAuth } from "../stores/authStore";
+import { clearAuth, useAuthStore } from "../stores/authStore";
 import {
 	refreshResponseSchema,
 	type RefreshResponse,
 } from "../schemas/authSchema";
-import { isApiError } from "@/shared/types";
+import { isSystemError } from "@/shared/types";
 import { tokenManager } from "../globals/tokenManager";
+import { AuthStatus } from "../types";
+import {
+	loginResponseSchema,
+	type LoginRequest,
+	type LoginResponse,
+} from "../schemas/loginSchema";
+import type { User } from "../schemas/userSchema";
+import type { RegisterRequest } from "../schemas/registerSchema";
 
 export const authService = {
+	register: async (data: RegisterRequest) => {
+		return publicApiRequest<User>(
+			{
+				url: API_ENDPOINTS.AUTH.REGISTER,
+				method: "POST",
+				data,
+			},
+			{
+				successMessage: {
+					title: "Registration successful. Please login.",
+					description: "Your account has been created successfully.",
+				},
+			},
+		);
+	},
+
+	login: async (data: LoginRequest) => {
+		const response = await publicApiRequest<LoginResponse>(
+			{
+				url: API_ENDPOINTS.AUTH.LOGIN,
+				method: "POST",
+				data,
+			},
+			{
+				successMessage: {
+					title: "Login successful!",
+					description: "You’re all set — let’s get started.",
+				},
+			},
+		);
+
+		if (isSystemError(response)) return response;
+		const parsed = loginResponseSchema.safeParse(response);
+		if (!parsed.success) {
+			throw Error("Login response data validation failed:", parsed.error);
+		}
+
+		const { user, accessToken } = parsed.data;
+
+		useAuthStore.setState({
+			user,
+			status: AuthStatus.Authenticated,
+		});
+		tokenManager.setAccessToken(accessToken);
+
+		return response;
+	},
+
 	logout: async () => {
 		await publicApiRequest<void>({
 			url: API_ENDPOINTS.AUTH.LOGOUT,
@@ -28,9 +84,9 @@ export const authService = {
 			{ ignoreErrors: true },
 		);
 
-		if (isApiError(response)) {
+		if (isSystemError(response)) {
 			clearAuth();
-			throw null;
+			return null;
 		}
 		const parsed = refreshResponseSchema.safeParse(response);
 		if (!parsed.success) {

@@ -24,7 +24,7 @@ export const RequireAuth = () => {
 	if (status === AuthStatus.Loading) return <LoadingScreen />;
 	if (status === AuthStatus.Unauthenticated) {
 		notify.error("Access Denied", {
-			id: "auth-denied",
+			id: "access-denied",
 			description: "You must be logged in to view this page.",
 		});
 		return (

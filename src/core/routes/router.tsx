@@ -3,11 +3,17 @@ import { createBrowserRouter } from "react-router";
 import { APP_ROUTES } from "./paths";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import NotFound from "@/pages/NotFound";
+import LoginPage from "@/pages/public/LoginPage";
+import { RegisterPage } from "@/pages/public/RegisterPage";
 
 const router = createBrowserRouter([
 	{
+		path: APP_ROUTES.AUTH.REGISTER,
+		element: <RegisterPage />,
+	},
+	{
 		path: APP_ROUTES.AUTH.LOGIN,
-		element: <h3 className="text-3xl font-bold">Log In Page</h3>,
+		element: <LoginPage />,
 	},
 	{
 		element: <RequireAuth />,

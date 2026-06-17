@@ -1,9 +1,8 @@
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { userSchema, type User } from "../schemas/userSchema";
 import { API_ENDPOINTS } from "@/core/routes/paths";
-import { isApiError } from "@/shared/types";
+import { isSystemError } from "@/shared/types";
 import { clearAuth, useAuthStore } from "../stores/authStore";
-import { tokenManager } from "../globals/tokenManager";
 import { AuthStatus } from "../types";
 
 export const userService = {
@@ -13,9 +12,8 @@ export const userService = {
 			{ ignoreErrors: true },
 		);
 
-		if (isApiError(response)) {
-			useAuthStore.setState({ user: null, status: AuthStatus.Unauthenticated });
-			tokenManager.clear();
+		if (isSystemError(response)) {
+			clearAuth()
 			return null;
 		}
 		const parsed = userSchema.safeParse(response);

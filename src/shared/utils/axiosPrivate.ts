@@ -14,8 +14,7 @@ import { authService } from "@/features/auth/services/authService";
 
 const axiosPrivate = axios.create({
 	baseURL: CONFIG.API_BASE_URL,
-	timeout: 5000,
-	withCredentials: true,
+	timeout: CONFIG.TIMEOUT,
 	headers: {
 		"Content-Type": "application/json",
 	},
