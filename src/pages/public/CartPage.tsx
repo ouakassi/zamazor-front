@@ -104,7 +104,7 @@ export const CartPage = () => {
 											{/* Price Subtotal */}
 											<div className="text-right min-w-[70px]">
 												<p className="text-sm font-black text-slate-900">
-													${(parseFloat(product.price.replace("$", "")) * quantity).toFixed(2)}
+													{(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD
 												</p>
 												<p className="text-[10px] text-slate-400 mt-0.5">{product.price} each</p>
 											</div>
@@ -143,7 +143,7 @@ export const CartPage = () => {
 									<div className="space-y-3.5 text-sm">
 										<div className="flex justify-between text-slate-600">
 											<span>Subtotal</span>
-											<span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
+											<span className="font-bold text-slate-900">{subtotal.toFixed(2)} MAD</span>
 										</div>
 
 
@@ -154,20 +154,20 @@ export const CartPage = () => {
 													Free
 												</span>
 											) : (
-												<span className="font-bold text-slate-900">${shippingCost.toFixed(2)}</span>
+												<span className="font-bold text-slate-900">{shippingCost.toFixed(2)} MAD</span>
 											)}
 										</div>
 
 										{shippingCost > 0 && (
 											<p className="text-[11px] text-slate-400 leading-snug">
-												Add <strong className="text-slate-500">${(shippingThreshold - subtotal).toFixed(2)}</strong> more to get free shipping!
+												Add <strong className="text-slate-500">{(shippingThreshold - subtotal).toFixed(2)} MAD</strong> more to get free shipping!
 											</p>
 										)}
 
 
 										<div className="flex justify-between text-base font-black text-slate-900 border-t border-slate-100 pt-4 mt-2">
 											<span>Total</span>
-											<span>${orderTotal.toFixed(2)}</span>
+											<span>{orderTotal.toFixed(2)} MAD</span>
 										</div>
 									</div>
 

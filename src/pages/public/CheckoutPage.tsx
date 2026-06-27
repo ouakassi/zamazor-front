@@ -164,7 +164,7 @@ export const CheckoutPage = () => {
 						</div>
 						<div className="flex justify-between">
 							<span className="text-slate-500">Order Total:</span>
-							<span className="font-extrabold text-emerald-900">${orderTotal.toFixed(2)}</span>
+							<span className="font-extrabold text-emerald-900">{orderTotal.toFixed(2)} MAD</span>
 						</div>
 					</div>
 
@@ -397,7 +397,7 @@ export const CheckoutPage = () => {
 								) : (
 									<>
 										<Lock className="size-4" />
-										Complete Order &bull; ${orderTotal.toFixed(2)}
+										Complete Order &bull; {orderTotal.toFixed(2)} MAD
 									</>
 								)}
 							</OriginButton>
@@ -424,7 +424,7 @@ export const CheckoutPage = () => {
 												</div>
 											</div>
 											<span className="text-xs font-bold text-slate-900 shrink-0">
-												${(parseFloat(product.price.replace("$", "")) * quantity).toFixed(2)}
+												{(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD
 											</span>
 										</div>
 									))}
@@ -434,13 +434,13 @@ export const CheckoutPage = () => {
 								<div className="space-y-2.5 text-xs border-t border-slate-100 pt-4">
 									<div className="flex justify-between text-slate-500">
 										<span>Subtotal</span>
-										<span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
+										<span className="font-bold text-slate-900">{subtotal.toFixed(2)} MAD</span>
 									</div>
 
 									{discountPercentage > 0 && (
 										<div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 px-2 py-1 rounded-lg">
 											<span>Wellness Promo (20%)</span>
-											<span>-${discountAmount.toFixed(2)}</span>
+											<span>-{discountAmount.toFixed(2)} MAD</span>
 										</div>
 									)}
 
@@ -449,14 +449,14 @@ export const CheckoutPage = () => {
 										{shippingCost === 0 ? (
 											<span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] uppercase">Free</span>
 										) : (
-											<span className="font-bold text-slate-900">${shippingCost.toFixed(2)}</span>
+											<span className="font-bold text-slate-900">{shippingCost.toFixed(2)} MAD</span>
 										)}
 									</div>
 
 
 									<div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-100 pt-3 mt-2">
 										<span>Order Total</span>
-										<span>${orderTotal.toFixed(2)}</span>
+										<span>{orderTotal.toFixed(2)} MAD</span>
 									</div>
 								</div>
 							</div>

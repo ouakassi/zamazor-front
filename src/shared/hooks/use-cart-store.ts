@@ -90,7 +90,7 @@ export const useCartStore = create<CartStore>()(
 			totalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 			subtotal: () =>
 				get().items.reduce((sum, item) => {
-					const priceNum = parseFloat(item.product.price.replace("$", ""));
+					const priceNum = parseFloat(item.product.price.replace(/[^0-9.]/g, ""));
 					return sum + priceNum * item.quantity;
 				}, 0),
 		}),

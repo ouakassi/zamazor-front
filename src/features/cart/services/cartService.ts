@@ -41,7 +41,7 @@ export const cartService = {
 								id: item.product.id,
 								name: item.product.name,
 								category: "Supplement",
-								price: `$${item.product.price.toFixed(2)}`,
+								price: `${item.product.price.toFixed(2)} MAD`,
 								flavor: "Pure & clean",
 								badge: "Stack",
 								theme: "emerald",

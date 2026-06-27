@@ -90,7 +90,7 @@ const productMetadataMap: Record<string, RichMetadata> = {
 };
 
 export function mapBackendProduct(backendProd: BackendProduct): Product {
-	const formattedPrice = `$${Number(backendProd.price).toFixed(2)}`;
+	const formattedPrice = `${Number(backendProd.price).toFixed(2)} MAD`;
 	const key = backendProd.name.toLowerCase();
 	const meta = productMetadataMap[key];
 

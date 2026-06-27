@@ -377,7 +377,7 @@ export const ProfilePage = () => {
 
 											<div className="text-right">
 												<span className="text-xs text-slate-400 uppercase font-black tracking-wider block">Total Amount</span>
-												<span className="text-lg font-extrabold text-emerald-950">${order.totalAmount.toFixed(2)}</span>
+												<span className="text-lg font-extrabold text-emerald-950">{order.totalAmount.toFixed(2)} MAD</span>
 											</div>
 										</div>
 
@@ -390,7 +390,7 @@ export const ProfilePage = () => {
 														<span>{item.productName}</span>
 														<span className="text-xs text-slate-400 font-bold">x{item.quantity}</span>
 													</div>
-													<span className="font-bold text-slate-950">${(item.price * item.quantity).toFixed(2)}</span>
+													<span className="font-bold text-slate-950">{(item.price * item.quantity).toFixed(2)} MAD</span>
 												</div>
 											))}
 										</div>

@@ -140,7 +140,7 @@ export const ShopPage = () => {
 		// 3. Filter by Price Range
 		if (priceFilter !== "all") {
 			result = result.filter((p) => {
-				const priceNum = parseFloat(p.price.replace("$", ""));
+				const priceNum = parseFloat(p.price.replace(/[^0-9.]/g, ""));
 				if (priceFilter === "under-25") return priceNum < 25;
 				if (priceFilter === "25-40") return priceNum >= 25 && priceNum <= 40;
 				if (priceFilter === "over-40") return priceNum > 40;
@@ -155,8 +155,8 @@ export const ShopPage = () => {
 
 		// 5. Sort Products
 		result.sort((a, b) => {
-			const priceA = parseFloat(a.price.replace("$", ""));
-			const priceB = parseFloat(b.price.replace("$", ""));
+			const priceA = parseFloat(a.price.replace(/[^0-9.]/g, ""));
+			const priceB = parseFloat(b.price.replace(/[^0-9.]/g, ""));
 
 			if (sortBy === "price-asc") return priceA - priceB;
 			if (sortBy === "price-desc") return priceB - priceA;
@@ -266,9 +266,9 @@ export const ShopPage = () => {
 								<div className="flex flex-col gap-1.5">
 									{[
 										{ id: "all", label: "All Prices" },
-										{ id: "under-25", label: "Under $25" },
-										{ id: "25-40", label: "$25 to $40" },
-										{ id: "over-40", label: "Over $40" }
+										{ id: "under-25", label: "Under 25 MAD" },
+										{ id: "25-40", label: "25 to 40 MAD" },
+										{ id: "over-40", label: "Over 40 MAD" }
 									].map((opt) => (
 										<button
 											key={opt.id}
@@ -390,7 +390,7 @@ export const ShopPage = () => {
 									)}
 									{priceFilter !== "all" && (
 										<span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-900 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-900/10">
-											{priceFilter === "under-25" ? "Under $25" : priceFilter === "25-40" ? "$25 to $40" : "Over $40"}
+											{priceFilter === "under-25" ? "Under 25 MAD" : priceFilter === "25-40" ? "25 to 40 MAD" : "Over 40 MAD"}
 											<X className="size-3 text-emerald-700 hover:text-emerald-900 cursor-pointer" onClick={() => setPriceFilter("all")} />
 										</span>
 									)}
@@ -619,9 +619,9 @@ export const ShopPage = () => {
 								<div className="flex flex-wrap gap-1.5">
 									{[
 										{ id: "all", label: "All Prices" },
-										{ id: "under-25", label: "Under $25" },
-										{ id: "25-40", label: "$25 to $40" },
-										{ id: "over-40", label: "Over $40" }
+										{ id: "under-25", label: "Under 25 MAD" },
+										{ id: "25-40", label: "25 to 40 MAD" },
+										{ id: "over-40", label: "Over 40 MAD" }
 									].map((opt) => (
 										<button
 											key={opt.id}
