@@ -346,8 +346,8 @@ export const DashboardPage = () => {
 									<div className="grid gap-4 sm:grid-cols-3">
 										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
 											<div>
-												<span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Revenue</span>
-												<h3 className="text-2xl font-black mt-1 text-slate-950">{(totalSales || 0).toFixed(2)} MAD</h3>
+												<span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Revenue</span>
+												<h3 className="text-2xl font-bold tracking-tight mt-1 text-slate-950">{(totalSales || 0).toFixed(2)} MAD</h3>
 											</div>
 											<div className="p-3 bg-emerald-50 rounded-2xl text-emerald-800">
 												<ShoppingCart className="size-6" />
@@ -356,8 +356,8 @@ export const DashboardPage = () => {
 
 										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
 											<div>
-												<span className="text-xs font-black uppercase tracking-wider text-slate-400">All Products</span>
-												<h3 className="text-2xl font-black mt-1 text-slate-950">{products.length} Items</h3>
+												<span className="text-xs font-semibold uppercase tracking-wider text-slate-400">All Products</span>
+												<h3 className="text-2xl font-bold tracking-tight mt-1 text-slate-950">{products.length} Items</h3>
 											</div>
 											<div className="p-3 bg-lime-50 rounded-2xl text-emerald-900">
 												<Box className="size-6" />
@@ -366,8 +366,8 @@ export const DashboardPage = () => {
 
 										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
 											<div>
-												<span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Orders</span>
-												<h3 className="text-2xl font-black mt-1 text-slate-950">{orders.length}</h3>
+												<span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Orders</span>
+												<h3 className="text-2xl font-bold tracking-tight mt-1 text-slate-950">{orders.length}</h3>
 											</div>
 											<div className="p-3 bg-teal-50 rounded-2xl text-teal-800">
 												<ClipboardList className="size-6" />
@@ -377,7 +377,7 @@ export const DashboardPage = () => {
 
 									{/* Sales overview chart container */}
 									<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md">
-										<h3 className="font-playfair font-bold text-lg text-slate-950 mb-6">Recent Sales Dynamics</h3>
+										<h3 className="font-sans font-semibold text-base text-slate-950 mb-6">Recent Sales Dynamics</h3>
 										{orders.length === 0 ? (
 											<div className="h-64 border border-dashed border-slate-200 rounded-2xl bg-slate-50 flex items-center justify-center text-sm text-slate-400">
 												No sales recorded. Create test orders to visualize data.
@@ -467,11 +467,11 @@ export const DashboardPage = () => {
 																</div>
 															</td>
 															<td className="px-6 py-4">
-																<span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 border border-slate-200/50 text-slate-700 px-2 py-0.5 rounded-md inline-block">
+																<span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-100 border border-slate-200/50 text-slate-700 px-2 py-0.5 rounded-md inline-block">
 																	{product.category}
 																</span>
 															</td>
-															<td className="px-6 py-4 font-black text-slate-900 text-xs">
+															<td className="px-6 py-4 font-semibold text-slate-900 text-xs">
 																{product.price}
 															</td>
 															<td className="px-6 py-4 text-right">
@@ -550,7 +550,7 @@ export const DashboardPage = () => {
 									<div className="overflow-x-auto">
 										<table className="w-full text-left text-sm border-collapse">
 											<thead>
-												<tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400 bg-slate-50/50">
+												<tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50/50">
 													<th className="px-6 py-4">Order Number</th>
 													<th className="px-6 py-4">Date</th>
 													<th className="px-6 py-4">Total Amount</th>
@@ -574,11 +574,11 @@ export const DashboardPage = () => {
 															<td className="px-6 py-4 text-slate-500">
 																{new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
 															</td>
-															<td className="px-6 py-4 font-black text-slate-950">
+															<td className="px-6 py-4 font-semibold text-slate-950">
 																{(order.totalAmount || 0).toFixed(2)} MAD
 															</td>
 															<td className="px-6 py-4">
-																<span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+																<span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
 																	order.status === "PENDING"
 																		? "bg-amber-50 text-amber-800 border border-amber-200/50"
 																		: order.status === "COMPLETED" || order.status === "PAID"
@@ -632,7 +632,7 @@ export const DashboardPage = () => {
 							<X className="size-4" />
 						</button>
 
-						<h3 className="font-playfair text-2xl font-bold text-slate-950 mb-6">
+						<h3 className="font-sans text-xl font-semibold text-slate-950 mb-6">
 							{editingProduct ? "Edit Product" : "New Supplement Product"}
 						</h3>
 
@@ -756,10 +756,10 @@ export const DashboardPage = () => {
 						</button>
 
 						<div className="flex flex-wrap items-baseline gap-3 mb-6">
-							<h3 className="font-playfair text-2xl font-bold text-slate-950">
+							<h3 className="font-sans text-xl font-semibold text-slate-950">
 								Order {selectedOrder.orderNumber}
 							</h3>
-							<span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+							<span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
 								selectedOrder.status === "PENDING"
 									? "bg-amber-50 text-amber-800 border border-amber-200/50"
 									: selectedOrder.status === "COMPLETED" || selectedOrder.status === "PAID"
@@ -772,11 +772,11 @@ export const DashboardPage = () => {
 
 						<div className="grid gap-6 sm:grid-cols-2 text-sm mb-6 border-b border-slate-100 pb-5">
 							<div>
-								<span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">Shipping Details</span>
+								<span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Shipping Details</span>
 								<p className="font-bold text-slate-900 leading-relaxed whitespace-pre-line">{selectedOrder.shippingAddress}</p>
 							</div>
 							<div>
-								<span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">Order Date & Metadata</span>
+								<span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Order Date & Metadata</span>
 								<p className="text-slate-800">
 									Date: <strong className="text-slate-950 font-sans">{new Date(selectedOrder.createdAt).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}</strong>
 								</p>
@@ -787,7 +787,7 @@ export const DashboardPage = () => {
 						</div>
 
 						<div className="space-y-4">
-							<span className="text-xs font-black uppercase tracking-wider text-slate-400 block">Ordered Stacks</span>
+							<span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">Ordered Stacks</span>
 							<div className="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden bg-slate-50/30">
 								{selectedOrder.items.map((item) => (
 									<div key={item.id} className="flex justify-between items-center p-4 text-sm">
@@ -796,7 +796,7 @@ export const DashboardPage = () => {
 											<span className="font-bold text-slate-900">{item.productName}</span>
 											<span className="text-xs text-slate-400 font-bold">x{item.quantity}</span>
 										</div>
-										<span className="font-black text-slate-950">{((item.price || 0) * (item.quantity || 0)).toFixed(2)} MAD</span>
+										<span className="font-semibold text-slate-950">{((item.price || 0) * (item.quantity || 0)).toFixed(2)} MAD</span>
 									</div>
 								))}
 							</div>
