@@ -103,7 +103,10 @@ export const CartPage = () => {
 											{/* Price Subtotal */}
 											<div className="text-right min-w-[70px]">
 												<p className="text-sm font-black text-slate-900">
-													{(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD
+													{product && typeof product.price === "string"
+														? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
+														: "0.00"
+													} MAD
 												</p>
 												<p className="text-[10px] text-slate-400 mt-0.5">{product.price} each</p>
 											</div>

@@ -250,7 +250,7 @@ export const ProductDetailPage = () => {
 										className="flex-1 h-12 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md"
 									>
 										<ShoppingBagIcon className="size-4" />
-										Add to cart &bull; {product ? `${(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD` : ""}
+										Add to cart &bull; {product && typeof product.price === "string" ? `${(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD` : ""}
 									</OriginButton>
 
 									{product && (

@@ -427,7 +427,10 @@ export const CheckoutPage = () => {
 												</div>
 											</div>
 											<span className="text-xs font-bold text-slate-900 shrink-0">
-												{(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD
+												{product && typeof product.price === "string"
+													? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
+													: "0.00"
+												} MAD
 											</span>
 										</div>
 									))}

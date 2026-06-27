@@ -140,7 +140,8 @@ export const ShopPage = () => {
 		// 3. Filter by Price Range
 		if (priceFilter !== "all") {
 			result = result.filter((p) => {
-				const priceNum = parseFloat(p.price.replace(/[^0-9.]/g, ""));
+				const priceStr = typeof p.price === "string" ? p.price : "";
+				const priceNum = parseFloat(priceStr.replace(/[^0-9.]/g, "")) || 0;
 				if (priceFilter === "under-25") return priceNum < 25;
 				if (priceFilter === "25-40") return priceNum >= 25 && priceNum <= 40;
 				if (priceFilter === "over-40") return priceNum > 40;
@@ -155,8 +156,10 @@ export const ShopPage = () => {
 
 		// 5. Sort Products
 		result.sort((a, b) => {
-			const priceA = parseFloat(a.price.replace(/[^0-9.]/g, ""));
-			const priceB = parseFloat(b.price.replace(/[^0-9.]/g, ""));
+			const priceStrA = typeof a.price === "string" ? a.price : "";
+			const priceStrB = typeof b.price === "string" ? b.price : "";
+			const priceA = parseFloat(priceStrA.replace(/[^0-9.]/g, "")) || 0;
+			const priceB = parseFloat(priceStrB.replace(/[^0-9.]/g, "")) || 0;
 
 			if (sortBy === "price-asc") return priceA - priceB;
 			if (sortBy === "price-desc") return priceB - priceA;
