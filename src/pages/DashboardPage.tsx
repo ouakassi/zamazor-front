@@ -657,7 +657,7 @@ export const DashboardPage = () => {
 												size="icon"
 												disabled={productPage === 1}
 												onClick={() => setProductPage((p) => Math.max(1, p - 1))}
-												className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+												className="h-8 w-8 rounded-lg border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
 											>
 												&larr;
 											</Button>
@@ -669,10 +669,10 @@ export const DashboardPage = () => {
 														key={pageNum}
 														variant={productPage === pageNum ? "default" : "outline"}
 														onClick={() => setProductPage(pageNum)}
-														className={`h-8 w-8 rounded-lg font-bold cursor-pointer transition-all text-[11px] flex items-center justify-center ${
+														className={`h-8 w-8 rounded-lg font-bold cursor-pointer transition-all text-xs flex items-center justify-center ${
 															productPage === pageNum
-																? "bg-slate-900 hover:bg-slate-950 text-white border-slate-900 shadow-sm"
-																: "border-slate-200 text-slate-600 hover:bg-slate-50"
+																? "bg-emerald-900 hover:bg-emerald-950 text-white border-emerald-900 shadow-sm"
+																: "border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900"
 														}`}
 													>
 														{pageNum}
@@ -685,7 +685,7 @@ export const DashboardPage = () => {
 												size="icon"
 												disabled={productPage === totalProductPages}
 												onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
-												className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+												className="h-8 w-8 rounded-lg border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
 											>
 												&rarr;
 											</Button>
