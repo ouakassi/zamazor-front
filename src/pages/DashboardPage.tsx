@@ -92,6 +92,7 @@ export const DashboardPage = () => {
 	const [nameError, setNameError] = useState("");
 	const [priceError, setPriceError] = useState("");
 	const [stockError, setStockError] = useState("");
+	const [imageError, setImageError] = useState("");
 
 	// Search, Filtering and Pagination for Products
 	const [productSearch, setProductSearch] = useState("");
@@ -160,6 +161,7 @@ export const DashboardPage = () => {
 		setNameError("");
 		setPriceError("");
 		setStockError("");
+		setImageError("");
 	};
 
 	const openNewProductModal = () => {
@@ -214,6 +216,14 @@ export const DashboardPage = () => {
 			hasErrors = true;
 		} else {
 			setStockError("");
+		}
+
+		// Validate image presence for new products
+		if (!editingProduct && !prodImage) {
+			setImageError("Product thumbnail image is required.");
+			hasErrors = true;
+		} else {
+			setImageError("");
 		}
 
 		if (hasErrors) {
@@ -905,8 +915,12 @@ export const DashboardPage = () => {
 							</div>
 
 							<div className="space-y-2">
-								<label className="text-xs font-bold text-slate-600">Product Thumbnail</label>
-								<div className="relative group border-2 border-dashed border-emerald-900/10 hover:border-emerald-800/50 rounded-2xl p-6 bg-slate-50/40 hover:bg-emerald-50/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 min-h-[140px]">
+								<label className="text-xs font-bold text-slate-600">Product Thumbnail *</label>
+								<div className={`relative group border-2 border-dashed rounded-2xl p-6 bg-slate-50/40 hover:bg-emerald-50/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 min-h-[140px] ${
+									imageError 
+										? "border-red-500 hover:border-red-600" 
+										: "border-emerald-900/10 hover:border-emerald-800/50"
+								}`}>
 									{prodImagePreview ? (
 										<div className="flex flex-col items-center gap-2">
 											<div className="size-20 rounded-xl overflow-hidden bg-white p-1 border border-slate-100 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
@@ -947,11 +961,13 @@ export const DashboardPage = () => {
 												}
 												setProdImage(file);
 												setProdImagePreview(URL.createObjectURL(file));
+												setImageError("");
 											}
 										}}
 										className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
 									/>
 								</div>
+								{imageError && <p className="text-[10px] font-semibold text-red-500 mt-0.5">{imageError}</p>}
 							</div>
 
 							<div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6 animate-in fade-in duration-200">
