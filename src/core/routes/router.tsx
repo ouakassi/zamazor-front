@@ -3,7 +3,10 @@ import { createBrowserRouter, Outlet } from "react-router";
 
 import { APP_ROUTES } from "./paths";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
-import { DashboardPage } from "@/pages/DashboardPage";
+import { DashboardLayout } from "@/pages/dashboard/DashboardLayout";
+import { OverviewPage } from "@/pages/dashboard/OverviewPage";
+import { ProductsPage } from "@/pages/dashboard/ProductsPage";
+import { OrdersPage } from "@/pages/dashboard/OrdersPage";
 import NotFound from "@/pages/NotFound";
 import { HomePage } from "@/pages/public/HomePage";
 import LoginPage from "@/pages/public/LoginPage";
@@ -73,7 +76,21 @@ const router = createBrowserRouter([
 				children: [
 					{
 						path: APP_ROUTES.DASHBOARD,
-						element: <DashboardPage />,
+						element: <DashboardLayout />,
+						children: [
+							{
+								index: true,
+								element: <OverviewPage />,
+							},
+							{
+								path: "products",
+								element: <ProductsPage />,
+							},
+							{
+								path: "orders",
+								element: <OrdersPage />,
+							},
+						],
 					},
 				],
 			},
