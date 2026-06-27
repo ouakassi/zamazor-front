@@ -414,7 +414,7 @@ export const DashboardPage = () => {
 										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
 											<div>
 												<span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Revenue</span>
-												<h3 className="text-2xl font-black mt-1 text-slate-950">{totalSales.toFixed(2)} MAD</h3>
+												<h3 className="text-2xl font-black mt-1 text-slate-950">{(totalSales || 0).toFixed(2)} MAD</h3>
 											</div>
 											<div className="p-3 bg-emerald-50 rounded-2xl text-emerald-800">
 												<ShoppingCart className="size-6" />
@@ -458,7 +458,7 @@ export const DashboardPage = () => {
 														return (
 															<div key={order.id} className="flex-1 flex flex-col items-center gap-2 group">
 																<div className="text-[10px] font-bold text-slate-950 opacity-0 group-hover:opacity-100 transition-opacity">
-																	{order.totalAmount.toFixed(0)} MAD
+																	{(order.totalAmount || 0).toFixed(0)} MAD
 																</div>
 																<div
 																	className="w-full bg-emerald-900 group-hover:bg-emerald-950 rounded-lg transition-all duration-200"
@@ -580,7 +580,7 @@ export const DashboardPage = () => {
 																{new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
 															</td>
 															<td className="px-6 py-4 font-black text-slate-950">
-																{order.totalAmount.toFixed(2)} MAD
+																{(order.totalAmount || 0).toFixed(2)} MAD
 															</td>
 															<td className="px-6 py-4">
 																<span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
@@ -786,7 +786,7 @@ export const DashboardPage = () => {
 									Date: <strong className="text-slate-950 font-sans">{new Date(selectedOrder.createdAt).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}</strong>
 								</p>
 								<p className="text-slate-800 mt-1">
-									Total Amount: <strong className="text-slate-950 font-sans">{selectedOrder.totalAmount.toFixed(2)} MAD</strong>
+									Total Amount: <strong className="text-slate-950 font-sans">{(selectedOrder.totalAmount || 0).toFixed(2)} MAD</strong>
 								</p>
 							</div>
 						</div>
@@ -801,7 +801,7 @@ export const DashboardPage = () => {
 											<span className="font-bold text-slate-900">{item.productName}</span>
 											<span className="text-xs text-slate-400 font-bold">x{item.quantity}</span>
 										</div>
-										<span className="font-black text-slate-950">{(item.price * item.quantity).toFixed(2)} MAD</span>
+										<span className="font-black text-slate-950">{((item.price || 0) * (item.quantity || 0)).toFixed(2)} MAD</span>
 									</div>
 								))}
 							</div>
