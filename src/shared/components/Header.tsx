@@ -407,7 +407,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 				</div>
 
 				{/* 🧭 Row 3: Sub-Navigation Bar (Desktop Only) */}
-				<div className="hidden border-t border-emerald-900/5 bg-[#f5f9f1]/40 py-2 px-6 lg:flex items-center justify-between font-sans">
+				<div className="hidden border-t border-emerald-900/5 bg-transparent py-2 px-6 lg:flex items-center justify-between font-sans">
 					<div className="flex items-center gap-1.5">
 						<NavigationMenu>
 							<NavigationMenuList className="gap-1">
