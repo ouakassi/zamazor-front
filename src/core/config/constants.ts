@@ -1,8 +1,15 @@
 import { z } from "zod/v4";
 
+const DEFAULT_ENV = {
+	VITE_API_BASE_URL: "http://localhost:8080",
+	VITE_APP_NAME: "Zamazor",
+} as const;
+
 const envSchema = z.object({
-	VITE_API_BASE_URL: z.url({ message: "Must be a valid URL string" }),
-	VITE_APP_NAME: z.string(),
+	VITE_API_BASE_URL: z
+		.url({ message: "Must be a valid URL string" })
+		.default(DEFAULT_ENV.VITE_API_BASE_URL),
+	VITE_APP_NAME: z.string().default(DEFAULT_ENV.VITE_APP_NAME),
 });
 
 const parsed = envSchema.safeParse(import.meta.env);
@@ -16,6 +23,7 @@ if (!parsed.success) {
 
 export const CONFIG = {
 	API_BASE_URL: parsed.data.VITE_API_BASE_URL,
+	TIMEOUT: 5000,
 	APP_NAME: parsed.data.VITE_APP_NAME,
 } as const;
 
