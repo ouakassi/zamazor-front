@@ -470,7 +470,7 @@ export const DashboardPage = () => {
 																	className="w-full bg-emerald-900 group-hover:bg-emerald-950 rounded-lg transition-all duration-200"
 																	style={{ height: `${heightPercentage}%` }}
 																/>
-																<span className="text-[10px] font-mono text-slate-400 truncate w-full text-center">
+																<span className="text-[10px] font-sans text-slate-400 truncate w-full text-center">
 																	{order.orderNumber}
 																</span>
 															</div>
@@ -690,7 +690,7 @@ export const DashboardPage = () => {
 												) : (
 													orders.map((order) => (
 														<tr key={order.id} className="hover:bg-slate-50/40">
-															<td className="px-6 py-4 font-mono font-bold text-slate-900">
+															<td className="px-6 py-4 font-sans font-bold text-slate-900">
 																{order.orderNumber}
 															</td>
 															<td className="px-6 py-4 text-slate-500">
