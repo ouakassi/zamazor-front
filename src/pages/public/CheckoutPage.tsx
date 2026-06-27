@@ -21,7 +21,8 @@ import {
 	ShoppingBag,
 	Truck,
 	ShieldCheck,
-	Sparkles
+	Sparkles,
+	ShieldAlert
 } from "lucide-react";
 
 export const CheckoutPage = () => {
@@ -39,7 +40,7 @@ export const CheckoutPage = () => {
 	const [orderNumber, setOrderNumber] = useState("");
 	const user = useAuthStore((state) => state.user);
 
-	const { register, handleSubmit, setValue, formState: { errors } } = useForm<CheckoutFormValues>({
+	const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm<CheckoutFormValues>({
 		resolver: zodResolver(checkoutSchema),
 		defaultValues: {
 			email: "",
@@ -149,7 +150,7 @@ export const CheckoutPage = () => {
 					<CheckCircle2 className="size-16 text-emerald-600 mx-auto mb-5 animate-pulse" />
 					<h1 className="text-3xl font-playfair font-normal text-slate-950">Thank you for your order!</h1>
 					<p className="text-sm text-slate-500 mt-2">
-						Your clean stack order has been successfully placed. We've sent a receipt details and updates to <strong className="text-slate-700">{email}</strong>.
+						Your clean stack order has been successfully placed. We've sent a receipt details and updates to <strong className="text-slate-700">{getValues("email")}</strong>.
 					</p>
 
 					<div className="my-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-900/5 text-left text-sm space-y-2">
@@ -213,6 +214,19 @@ export const CheckoutPage = () => {
 					<div className="grid gap-8 lg:grid-cols-[1fr_380px] items-start">
 						{/* Checkout details Form */}
 						<form onSubmit={handleSubmit(handleCheckoutSubmit)} className="space-y-6">
+							{/* Admin Sandbox/Test Mode Warning Banner */}
+							{user?.role === "ADMIN" && (
+								<div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-800 shadow-xs">
+									<ShieldAlert className="size-5 shrink-0 text-amber-700 mt-0.5" />
+									<div>
+										<p className="text-sm font-bold text-slate-900">Administrator Sandbox Mode</p>
+										<p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
+											You are logged in as an Admin. Standard credit card operations will run in Sandbox Simulation. No real charges will be made.
+										</p>
+									</div>
+								</div>
+							)}
+
 							{/* Section 1: Customer Contact */}
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">

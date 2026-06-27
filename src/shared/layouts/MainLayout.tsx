@@ -28,11 +28,7 @@ export const MainLayout = () => {
 	return (
 		<div className="min-h-screen bg-[#f7fbf3] text-slate-950 selection:bg-emerald-100 flex flex-col justify-between">
 			<div>
-				{/* Top Announcement Bar */}
-				<div className="bg-emerald-950 px-4 py-2.5 text-center text-xs sm:text-sm font-semibold text-emerald-50 relative z-50">
-					Free shipping on orders over $50 &bull; Use code{" "}
-					<span className="text-lime-300 font-extrabold">WELLNESS20</span> at checkout
-				</div>
+				
 
 				<Header ref={headerRef} />
 

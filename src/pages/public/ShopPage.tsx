@@ -20,6 +20,8 @@ import { useProductStore } from "@/features/products/stores/productStore";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { productService } from "@/features/products/services/productService";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/features/auth/stores/authStore";
+import { APP_ROUTES } from "@/core/routes/paths";
 
 
 type PriceFilter = "all" | "under-25" | "25-40" | "over-40";
@@ -33,6 +35,7 @@ export const ShopPage = () => {
 	const removeBookmark = useBookmarkStore((state) => state.removeBookmark);
 	const isBookmarked = useBookmarkStore((state) => state.isBookmarked);
 	const { fetchProducts } = useProductStore();
+	const user = useAuthStore((state) => state.user);
 
 	useDocumentTitle("Shop Clean Supplement Formulas | Zamazor");
 
@@ -461,6 +464,19 @@ export const ShopPage = () => {
 													>
 														<HeartIcon className={cn("size-4 transition-colors", isBookmarked(product.id) ? "fill-rose-500 text-rose-500" : "text-slate-500")} />
 													</button>
+													{user?.role === "ADMIN" && (
+														<button
+															type="button"
+															onClick={(e) => {
+																e.stopPropagation();
+																navigate(APP_ROUTES.DASHBOARD);
+															}}
+															className="absolute left-3 bottom-3 z-10 bg-emerald-900 hover:bg-emerald-950 text-white font-sans font-bold text-[10px] uppercase tracking-wider px-3 py-1 rounded-lg shadow-sm cursor-pointer transition-transform hover:scale-105"
+															title="Edit Product (Admin Panel)"
+														>
+															✏️ Edit
+														</button>
+													)}
 													<img
 														src={product.image}
 														alt={product.name}

@@ -1,6 +1,8 @@
 import CONFIG from "@/core/config/constants";
 import { Button } from "@/shared/components/ui/button";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
+import { useNavigate } from "react-router";
+import { APP_ROUTES } from "@/core/routes/paths";
 import {
 	BarChart3Icon,
 	BoxIcon,
@@ -17,6 +19,7 @@ const stats = [
 
 export const DashboardPage = () => {
 	useDocumentTitle(`Dashboard | ${CONFIG.APP_NAME}`);
+	const navigate = useNavigate();
 
 	return (
 		<main className="min-h-screen bg-slate-50 text-slate-950">
@@ -26,7 +29,14 @@ export const DashboardPage = () => {
 						<p className="text-sm font-medium text-slate-500">Admin</p>
 						<h1 className="text-xl font-bold">Dashboard</h1>
 					</div>
-					<Button variant="outline">New product</Button>
+					<div className="flex items-center gap-2.5">
+						<Button variant="outline" onClick={() => navigate(APP_ROUTES.HOME)} className="cursor-pointer rounded-xl">
+							View Storefront
+						</Button>
+						<Button className="bg-emerald-900 hover:bg-emerald-950 text-white font-semibold rounded-xl cursor-pointer">
+							New product
+						</Button>
+					</div>
 				</div>
 			</header>
 
