@@ -501,28 +501,44 @@ export const DashboardPage = () => {
 
 									{/* Pagination footer */}
 									{totalProductPages > 1 && (
-										<div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 text-xs text-slate-500 font-semibold font-sans">
-											<div>
-												Page {productPage} of {totalProductPages}
-											</div>
-											<div className="flex items-center gap-1.5">
-												<Button
-													variant="outline"
-													onClick={() => setProductPage((p) => Math.max(1, p - 1))}
-													disabled={productPage === 1}
-													className="h-8 px-3 rounded-lg border-slate-200 text-[10px] font-bold hover:bg-slate-50 cursor-pointer"
-												>
-													Previous
-												</Button>
-												<Button
-													variant="outline"
-													onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
-													disabled={productPage === totalProductPages}
-													className="h-8 px-3 rounded-lg border-slate-200 text-[10px] font-bold hover:bg-slate-50 cursor-pointer"
-												>
-													Next
-												</Button>
-											</div>
+										<div className="p-4 border-t border-slate-100 bg-white flex items-center justify-center gap-2 select-none">
+											<Button
+												variant="outline"
+												size="icon"
+												disabled={productPage === 1}
+												onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+												className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+											>
+												&larr;
+											</Button>
+											
+											{Array.from({ length: totalProductPages }).map((_, i) => {
+												const pageNum = i + 1;
+												return (
+													<Button
+														key={pageNum}
+														variant={productPage === pageNum ? "default" : "outline"}
+														onClick={() => setProductPage(pageNum)}
+														className={`h-8 w-8 rounded-lg font-bold cursor-pointer transition-all text-[11px] flex items-center justify-center ${
+															productPage === pageNum
+																? "bg-slate-900 hover:bg-slate-950 text-white border-slate-900 shadow-sm"
+																: "border-slate-200 text-slate-600 hover:bg-slate-50"
+														}`}
+													>
+														{pageNum}
+													</Button>
+												);
+											})}
+
+											<Button
+												variant="outline"
+												size="icon"
+												disabled={productPage === totalProductPages}
+												onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+												className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+											>
+												&rarr;
+											</Button>
 										</div>
 									)}
 								</div>
