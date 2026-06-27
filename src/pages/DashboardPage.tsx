@@ -15,6 +15,7 @@ import { useAuthStore } from "@/features/auth/stores/authStore";
 import { type Product } from "@/core/config/productsData";
 import { toast } from "sonner";
 import { SidebarNav } from "@/shared/components/ui/dashboard-sidebar";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import {
 	BarChart3,
 	Box,
@@ -57,6 +58,23 @@ export const DashboardPage = () => {
 	const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 	const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 	const [selectedOrder, setSelectedOrder] = useState<BackendOrder | null>(null);
+
+	// Confirm dialog state
+	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [confirmTitle, setConfirmTitle] = useState("");
+	const [confirmDesc, setConfirmDesc] = useState("");
+	const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+	const [confirmDestructive, setConfirmDestructive] = useState(false);
+	const [confirmText, setConfirmText] = useState("Continue");
+
+	const showConfirm = (title: string, desc: string, action: () => void, isDestructive = false, confirmText = "Continue") => {
+		setConfirmTitle(title);
+		setConfirmDesc(desc);
+		setConfirmAction(() => action);
+		setConfirmDestructive(isDestructive);
+		setConfirmText(confirmText);
+		setConfirmOpen(true);
+	};
 
 	// Product Form state
 	const [prodName, setProdName] = useState("");
@@ -179,43 +197,55 @@ export const DashboardPage = () => {
 		}
 	};
 
-	const handleDeleteProduct = async (id: string) => {
-		if (!window.confirm("Are you sure you want to delete this product?")) return;
-
-		try {
-			const success = await productService.deleteProduct(id);
-			if (success) {
-				toast.success("Product deleted successfully.");
-				await loadData();
-			} else {
-				toast.error("Failed to delete product.");
-			}
-		} catch (error) {
-			console.error("Product deletion failed:", error);
-			toast.error("An error occurred while deleting.");
-		}
+	const handleDeleteProduct = (productId: string) => {
+		showConfirm(
+			"Delete Product",
+			"Are you sure you want to delete this product? This action cannot be undone and will permanently remove the item from the catalog.",
+			async () => {
+				try {
+					const success = await productService.deleteProduct(productId);
+					if (success) {
+						toast.success("Product deleted successfully.");
+						await loadData();
+					} else {
+						toast.error("Failed to delete product.");
+					}
+				} catch (error) {
+					console.error("Product deletion failed:", error);
+					toast.error("An error occurred while deleting.");
+				}
+			},
+			true,
+			"Delete"
+		);
 	};
 
-	const handleCancelOrder = async (orderId: string) => {
-		if (!window.confirm("Are you sure you want to cancel this order?")) return;
-
-		try {
-			const success = await orderService.cancelOrder(orderId);
-			if (success) {
-				toast.success("Order cancelled successfully.");
-				await loadData();
-				// Refresh selected order details modal if currently open
-				if (selectedOrder && selectedOrder.id === orderId) {
-					const updated = await orderService.getOrderById(orderId);
-					setSelectedOrder(updated);
+	const handleCancelOrder = (orderId: string) => {
+		showConfirm(
+			"Cancel Order",
+			"Are you sure you want to cancel this order? This action cannot be undone and will update the order status permanently.",
+			async () => {
+				try {
+					const success = await orderService.cancelOrder(orderId);
+					if (success) {
+						toast.success("Order cancelled successfully.");
+						await loadData();
+						// Refresh selected order details modal if currently open
+						if (selectedOrder && selectedOrder.id === orderId) {
+							const updated = await orderService.getOrderById(orderId);
+							setSelectedOrder(updated);
+						}
+					} else {
+						toast.error("Failed to cancel order.");
+					}
+				} catch (error) {
+					console.error("Order cancellation failed:", error);
+					toast.error("An error occurred while cancelling.");
 				}
-			} else {
-				toast.error("Failed to cancel order.");
-			}
-		} catch (error) {
-			console.error("Order cancellation failed:", error);
-			toast.error("An error occurred while cancelling.");
-		}
+			},
+			true,
+			"Cancel Order"
+		);
 	};
 
 	const handleLogout = async () => {
@@ -823,6 +853,17 @@ export const DashboardPage = () => {
 					</div>
 				</div>
 			)}
+
+			{/* Confirm Dialog */}
+			<ConfirmDialog
+				isOpen={confirmOpen}
+				title={confirmTitle}
+				description={confirmDesc}
+				confirmText={confirmText}
+				isDestructive={confirmDestructive}
+				onConfirm={confirmAction || (() => {})}
+				onClose={() => setConfirmOpen(false)}
+			/>
 		</div>
 	);
 };
