@@ -14,6 +14,7 @@ import { authService } from "@/features/auth/services/authService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { type Product } from "@/core/config/productsData";
 import { toast } from "sonner";
+import { SidebarNav } from "@/shared/components/ui/dashboard-sidebar";
 import {
 	BarChart3,
 	Box,
@@ -227,73 +228,17 @@ export const DashboardPage = () => {
 	return (
 		<div className="flex h-screen bg-slate-50 font-sans overflow-hidden text-slate-900">
 			{/* Desktop Sidebar */}
-			<aside className="hidden md:flex flex-col w-64 bg-emerald-950 text-emerald-50 border-r border-emerald-900/20 shrink-0">
-				<div className="p-6 border-b border-emerald-900/20">
-					<div className="flex items-center gap-3">
-						<div className="p-2 bg-emerald-900 rounded-xl">
-							<ShoppingBag className="size-6 text-lime-300" />
-						</div>
-						<div>
-							<h2 className="font-playfair font-black tracking-tight text-lg text-white">Zamazor</h2>
-							<p className="text-[10px] text-lime-400 font-bold tracking-widest uppercase">Admin Desk</p>
-						</div>
-					</div>
-				</div>
-
-				<nav className="flex-1 px-4 py-6 space-y-1.5">
-					<button
-						onClick={() => setActiveTab("overview")}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-							activeTab === "overview"
-								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
-								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
-						}`}
-					>
-						<BarChart3 className="size-4" />
-						Overview
-					</button>
-
-					<button
-						onClick={() => setActiveTab("products")}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-							activeTab === "products"
-								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
-								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
-						}`}
-					>
-						<Box className="size-4" />
-						Products
-					</button>
-
-					<button
-						onClick={() => setActiveTab("orders")}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-							activeTab === "orders"
-								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
-								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
-						}`}
-					>
-						<ClipboardList className="size-4" />
-						Orders
-					</button>
-				</nav>
-
-				<div className="p-4 border-t border-emerald-900/20 bg-emerald-950/40">
-					<div className="flex items-center justify-between gap-3 px-2 py-2">
-						<div className="min-w-0">
-							<p className="text-xs font-bold text-white truncate">{user?.fullName || "Administrator"}</p>
-							<p className="text-[10px] text-emerald-300/60 truncate">{user?.email || "admin@zamazor.com"}</p>
-						</div>
-						<button
-							onClick={handleLogout}
-							title="Log Out"
-							className="p-1.5 hover:bg-emerald-900 rounded-lg text-emerald-300 hover:text-rose-400 transition-colors cursor-pointer"
-						>
-							<LogOut className="size-4" />
-						</button>
-					</div>
-				</div>
-			</aside>
+			<SidebarNav
+				className="hidden md:flex"
+				activeId={activeTab}
+				onSelect={(id) => {
+					if (id === "logout") {
+						handleLogout();
+					} else {
+						setActiveTab(id as Tab);
+					}
+				}}
+			/>
 
 			{/* Mobile Sidebar overlay */}
 			{isMobileSidebarOpen && (
@@ -304,61 +249,23 @@ export const DashboardPage = () => {
 			)}
 
 			{/* Mobile Sidebar drawer */}
-			<aside
-				className={`fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-emerald-950 text-emerald-50 transition-transform duration-300 md:hidden ${
+			<div
+				className={`fixed inset-y-0 left-0 z-50 flex transition-transform duration-300 md:hidden ${
 					isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 			>
-				<div className="p-5 border-b border-emerald-900/20 flex justify-between items-center">
-					<div className="flex items-center gap-3">
-						<div className="p-1.5 bg-emerald-900 rounded-lg">
-							<ShoppingBag className="size-5 text-lime-300" />
-						</div>
-						<span className="font-playfair font-black text-white">Zamazor</span>
-					</div>
-					<button onClick={() => setIsMobileSidebarOpen(false)} className="text-emerald-300/80 hover:text-white">
-						<X className="size-5" />
-					</button>
-				</div>
-				<nav className="flex-1 px-3 py-4 space-y-1">
-					<button
-						onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-							activeTab === "overview" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
-						}`}
-					>
-						<BarChart3 className="size-4" />
-						Overview
-					</button>
-					<button
-						onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-							activeTab === "products" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
-						}`}
-					>
-						<Box className="size-4" />
-						Products
-					</button>
-					<button
-						onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
-						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-							activeTab === "orders" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
-						}`}
-					>
-						<ClipboardList className="size-4" />
-						Orders
-					</button>
-				</nav>
-				<div className="p-4 border-t border-emerald-900/20 flex items-center justify-between bg-emerald-950/40">
-					<div className="min-w-0">
-						<p className="text-xs font-bold text-white truncate">{user?.fullName || "Administrator"}</p>
-						<p className="text-[10px] text-emerald-300/60 truncate">{user?.email || "admin@zamazor.com"}</p>
-					</div>
-					<button onClick={handleLogout} className="p-2 hover:bg-emerald-900 rounded-lg text-rose-400 cursor-pointer">
-						<LogOut className="size-4" />
-					</button>
-				</div>
-			</aside>
+				<SidebarNav
+					activeId={activeTab}
+					onSelect={(id) => {
+						if (id === "logout") {
+							handleLogout();
+						} else {
+							setActiveTab(id as Tab);
+						}
+						setIsMobileSidebarOpen(false);
+					}}
+				/>
+			</div>
 
 			{/* Main Content Pane */}
 			<div className="flex-1 flex flex-col overflow-y-auto">
