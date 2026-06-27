@@ -582,7 +582,7 @@ export const DashboardPage = () => {
 												<Button
 													variant="outline"
 													onClick={handleResetFilters}
-													className="h-9 px-3 rounded-xl border border-dashed border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+													className="h-9 px-3 rounded-xl border border-dashed border-red-200 text-xs font-semibold text-red-600 bg-red-50/25 hover:bg-red-50 hover:text-red-700 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all duration-150 animate-in fade-in"
 												>
 													Reset
 													<X className="size-3.5" />
