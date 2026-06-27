@@ -71,7 +71,7 @@ export const DashboardPage = () => {
 	// Search and Pagination for Products
 	const [productSearch, setProductSearch] = useState("");
 	const [productPage, setProductPage] = useState(1);
-	const productsPerPage = 5;
+	const productsPerPage = 10;
 
 	const handleSearchChange = (value: string) => {
 		setProductSearch(value);
