@@ -11,8 +11,6 @@ import {
 	ArrowLeft,
 	ArrowRightIcon,
 	Trash2,
-	Tag,
-	Check,
 	ShoppingBagIcon
 } from "lucide-react";
 
@@ -24,36 +22,12 @@ export const CartPage = () => {
 	const removeItem = useCartStore((state) => state.removeItem);
 	const subtotal = useCartStore((state) => state.subtotal());
 
-	const [promoCode, setPromoCode] = useState("");
-	const [appliedDiscount, setAppliedDiscount] = useState(0); // in percentage
-	const [promoError, setPromoError] = useState("");
-	const [promoSuccess, setPromoSuccess] = useState("");
-
 	useDocumentTitle("Shopping Cart | Zamazor");
 
 	// Calculations
-	const discountAmount = subtotal * (appliedDiscount / 100);
 	const shippingThreshold = 50;
 	const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 4.99;
-	const orderTotal = subtotal - discountAmount + shippingCost;
-
-	const handleApplyPromo = (e: React.FormEvent) => {
-		e.preventDefault();
-		const trimmedCode = promoCode.trim().toUpperCase();
-
-		if (trimmedCode === "WELLNESS20") {
-			setAppliedDiscount(20);
-			setPromoSuccess("Code 'WELLNESS20' applied! You saved 20% on your stack.");
-			setPromoError("");
-			toast.success("Promo code applied: 20% savings!");
-		} else if (trimmedCode === "") {
-			setPromoError("Please enter a promo code.");
-			setPromoSuccess("");
-		} else {
-			setPromoError("Invalid promo code. Try using 'WELLNESS20'.");
-			setPromoSuccess("");
-		}
-	};
+	const orderTotal = subtotal + shippingCost;
 
 
 
@@ -172,15 +146,6 @@ export const CartPage = () => {
 											<span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
 										</div>
 
-										{appliedDiscount > 0 && (
-											<div className="flex justify-between text-emerald-800 bg-emerald-50/50 px-2.5 py-1.5 rounded-lg border border-emerald-900/5">
-												<span className="flex items-center gap-1.5">
-													<Tag className="size-3.5" />
-													Wellness Discount ({appliedDiscount}%)
-												</span>
-												<span className="font-bold">-${discountAmount.toFixed(2)}</span>
-											</div>
-										)}
 
 										<div className="flex justify-between text-slate-600">
 											<span>Shipping</span>
@@ -206,44 +171,9 @@ export const CartPage = () => {
 										</div>
 									</div>
 
-									{/* Promo Code Form */}
-									<form onSubmit={handleApplyPromo} className="mt-6 pt-5 border-t border-slate-100">
-										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-2">
-											Have a promo code?
-										</label>
-										<div className="flex gap-2">
-											<Input
-												type="text"
-												placeholder="WELLNESS20"
-												value={promoCode}
-												onChange={(e) => setPromoCode(e.target.value)}
-												className="h-10 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
-											/>
-											<Button
-												type="submit"
-												variant="outline"
-												className="h-10 px-4 rounded-xl border-emerald-900/15 text-emerald-800 hover:bg-emerald-50 font-bold"
-											>
-												Apply
-											</Button>
-										</div>
-
-										{promoError && (
-											<p className="text-xs text-rose-600 mt-2 font-semibold">
-												{promoError}
-											</p>
-										)}
-										{promoSuccess && (
-											<p className="text-xs text-emerald-700 mt-2 font-semibold flex items-center gap-1">
-												<Check className="size-3.5 bg-emerald-100 text-emerald-800 rounded-full p-0.5" />
-												{promoSuccess}
-											</p>
-										)}
-									</form>
-
 									{/* Checkout button */}
 									<Button
-										onClick={() => navigate(APP_ROUTES.CHECKOUT, { state: { discount: appliedDiscount } })}
+										onClick={() => navigate(APP_ROUTES.CHECKOUT)}
 										className="w-full h-12 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl mt-6 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/10"
 									>
 										Proceed to checkout
