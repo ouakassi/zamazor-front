@@ -435,7 +435,7 @@ export const DashboardPage = () => {
 										</div>
 									</div>
 
-									<div className="overflow-x-auto">
+									<div className="overflow-x-auto min-h-[580px]">
 										<table className="w-full text-left text-sm border-collapse">
 											<thead>
 												<tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/50">
