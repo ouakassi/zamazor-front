@@ -104,11 +104,11 @@ export const orderService = {
 		}
 	},
 
-	checkout: async (userId: string, shippingAddress: string): Promise<BackendOrder> => {
+	checkout: async (payload: { country: string; city: string; street: string; isDefault: boolean }): Promise<BackendOrder> => {
 		const response = await privateApiRequest<BackendOrder>({
-			url: `/orders/checkout?userId=${userId}`,
+			url: "/orders/checkout",
 			method: "POST",
-			data: { shippingAddress },
+			data: payload,
 		});
 
 		if (isSystemError(response)) {

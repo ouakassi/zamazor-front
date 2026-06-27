@@ -100,9 +100,13 @@ export const CheckoutPage = () => {
 
 		try {
 			const auth = useAuthStore.getState();
-			const userId = auth.user?.id || "";
 			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}`;
-			const response = await orderService.checkout(userId, shippingAddress);
+			const response = await orderService.checkout({
+				country: "Morocco",
+				city: data.city,
+				street: data.address,
+				isDefault: true,
+			});
 
 			// Update local auth store so the saved shipping address is stored and pre-filled next time
 			if (auth.user) {
