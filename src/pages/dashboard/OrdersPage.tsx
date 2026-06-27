@@ -29,7 +29,7 @@ export const OrdersPage = () => {
 
 	// Pagination
 	const [orderPage, setOrderPage] = useState(1);
-	const ordersPerPage = 10;
+	const ordersPerPage = 5;
 
 	const loadData = async () => {
 		setLoading(true);
