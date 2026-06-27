@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   FolderKanban, 
   LogOut,
-  ChevronDown,
   ChevronRight,
   Inbox
 } from 'lucide-react';
@@ -37,47 +36,18 @@ const mockBottomItems: NavItemData[] = [
   { id: 'logout', title: 'Log out', icon: LogOut },
 ];
 
-function WorkspaceSwitcher({ selected, onSelect }: { selected?: string, onSelect?: (ws: string) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [internalSelected, setInternalSelected] = useState('Zamazor Store');
-  
-  const current = selected || internalSelected;
-  const handleSelect = onSelect || setInternalSelected;
+function WorkspaceSwitcher({ selected }: { selected?: string }) {
+  const current = selected || 'Zamazor Store';
 
   return (
-    <div className="relative">
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between px-2.5 py-2 mb-4 rounded-xl hover:bg-slate-100 cursor-pointer transition-all duration-200 select-none group active:scale-[0.98] border border-slate-100/50"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-900 text-white flex items-center justify-center font-bold text-[13px] shadow-sm">
-            {current.charAt(0)}
-          </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-[13px] font-bold leading-none mb-1 text-slate-900 truncate max-w-[120px]">{current}</span>
-            <span className="text-[10px] text-slate-500 leading-none font-medium">Admin Desk</span>
-          </div>
-        </div>
-        <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" strokeWidth={1.5} />
+    <div className="flex items-center gap-3 px-2.5 py-2 mb-4 rounded-xl border border-slate-100/50 select-none bg-slate-50/50">
+      <div className="w-8 h-8 rounded-lg bg-emerald-900 text-white flex items-center justify-center font-bold text-[13px] shadow-sm">
+        {current.charAt(0)}
       </div>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-[52px] left-0 w-full bg-white border border-slate-200/80 rounded-xl shadow-xl z-50 py-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-            {['Zamazor Store', 'Sandbox Lab'].map(ws => (
-              <div 
-                key={ws}
-                onClick={() => { handleSelect(ws); setIsOpen(false); }}
-                className={`px-3 py-2 mx-1.5 text-[13px] rounded-lg cursor-pointer transition-colors ${current === ws ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
-              >
-                {ws}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <div className="flex flex-col overflow-hidden">
+        <span className="text-[13px] font-bold leading-none mb-1 text-slate-900 truncate max-w-[150px]">{current}</span>
+        <span className="text-[10px] text-slate-500 leading-none font-medium">Admin Desk</span>
+      </div>
     </div>
   );
 }
@@ -203,7 +173,7 @@ export function SidebarNav({
 
   return (
     <div className={`flex flex-col w-[260px] h-full bg-white text-slate-800 border-r border-slate-200/85 p-4 font-sans ${className}`}>
-      <WorkspaceSwitcher selected={activeWorkspace} onSelect={onWorkspaceSelect} />
+      <WorkspaceSwitcher selected={activeWorkspace} />
 
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col gap-4 mt-2">
         {mockNavGroups.map((group, idx) => (
@@ -238,3 +208,4 @@ export function SidebarNav({
     </div>
   );
 }
+Cwd:
