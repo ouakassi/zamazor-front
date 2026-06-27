@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Outlet } from "react-router";
 import { Header } from "@/shared/components/Header";
 import { Footer } from "@/shared/components/Footer";
+import { FloatingQuizButton } from "@/shared/components/FloatingQuizButton";
 
 export const MainLayout = () => {
 	const headerRef = useRef<HTMLElement>(null);
@@ -36,6 +37,7 @@ export const MainLayout = () => {
 			</div>
 
 			<Footer />
+			<FloatingQuizButton />
 		</div>
 	);
 };
