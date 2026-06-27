@@ -554,22 +554,28 @@ export const DashboardPage = () => {
 										<table className="w-full text-left text-sm border-collapse">
 											<thead>
 												<tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/50">
+													<th className="px-6 py-4">ID</th>
 													<th className="px-6 py-4">Product</th>
+													<th className="px-6 py-4">Description</th>
 													<th className="px-6 py-4">Category</th>
 													<th className="px-6 py-4">Price</th>
+													<th className="px-6 py-4">Quantity</th>
 													<th className="px-6 py-4 text-right">Actions</th>
 												</tr>
 											</thead>
 											<tbody className="divide-y divide-slate-100">
 												{paginatedProducts.length === 0 ? (
 													<tr>
-														<td colSpan={4} className="px-6 py-12 text-center text-slate-400 text-xs font-semibold">
+														<td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-xs font-semibold">
 															No products match your filter.
 														</td>
 													</tr>
 												) : (
 													paginatedProducts.map((product) => (
 														<tr key={product.id} className="hover:bg-slate-50/40 transition-colors duration-150 group">
+															<td className="px-6 py-4 text-[10px] font-sans text-slate-400 max-w-[70px] truncate select-all" title={product.id}>
+																{product.id}
+															</td>
 															<td className="px-6 py-4">
 																<div className="flex items-center gap-3">
 																	<div className="size-11 shrink-0 bg-slate-50 rounded-xl p-1.5 flex items-center justify-center border border-slate-100 group-hover:scale-105 transition-transform duration-200">
@@ -581,6 +587,9 @@ export const DashboardPage = () => {
 																	</div>
 																</div>
 															</td>
+															<td className="px-6 py-4 text-slate-500 text-xs max-w-[200px] truncate">
+																{product.description || "No description provided."}
+															</td>
 															<td className="px-6 py-4">
 																<span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-100 border border-slate-200/50 text-slate-700 px-2 py-0.5 rounded-md inline-block">
 																	{product.category}
@@ -588,6 +597,17 @@ export const DashboardPage = () => {
 															</td>
 															<td className="px-6 py-4 font-semibold text-slate-900 text-xs">
 																{product.price}
+															</td>
+															<td className="px-6 py-4 font-semibold text-xs">
+																<span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md ${
+																	(product.stock || 0) === 0
+																		? "bg-rose-50 text-rose-700 border border-rose-100/50"
+																		: (product.stock || 0) < 10
+																		? "bg-amber-50 text-amber-700 border border-amber-100/50"
+																		: "bg-emerald-50 text-emerald-800 border border-emerald-100/50"
+																}`}>
+																	{product.stock !== undefined ? `${product.stock} units` : "0 units"}
+																</span>
 															</td>
 															<td className="px-6 py-4 text-right">
 																<div className="flex items-center justify-end gap-1.5">

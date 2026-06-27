@@ -146,6 +146,7 @@ export function mapBackendProduct(backendProd: BackendProduct): Product {
 		theme: meta?.theme || "emerald",
 		image: imageUrl,
 		description: backendProd.description || meta?.description || "",
+		stock: backendProd.stockQuantity,
 		benefits: meta?.benefits || [
 			"Premium scientifically validated formula",
 			"Naturally sweetened, zero artificial colors",
