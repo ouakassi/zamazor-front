@@ -108,6 +108,15 @@ export const DashboardPage = () => {
 		setProductPage(1);
 	};
 
+	const isFilterActive = productSearch !== "" || selectedCategoryFilter !== "all" || sortBy !== "name-asc";
+
+	const handleResetFilters = () => {
+		setProductSearch("");
+		setSelectedCategoryFilter("all");
+		setSortBy("name-asc");
+		setProductPage(1);
+	};
+
 	const loadData = async () => {
 		setLoading(true);
 		try {
@@ -518,6 +527,18 @@ export const DashboardPage = () => {
 												<option value="price-asc">Price: Low to High</option>
 												<option value="price-desc">Price: High to Low</option>
 											</select>
+
+											{/* Reset Filters button */}
+											{isFilterActive && (
+												<Button
+													variant="outline"
+													onClick={handleResetFilters}
+													className="h-9 px-3 rounded-xl border border-dashed border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+												>
+													Reset
+													<X className="size-3.5" />
+												</Button>
+											)}
 										</div>
 
 										<div className="text-xs text-slate-500 font-bold font-sans text-right shrink-0 whitespace-nowrap">
