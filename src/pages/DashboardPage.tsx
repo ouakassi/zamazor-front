@@ -35,7 +35,10 @@ import {
 	Menu,
 	ShoppingBag,
 	Search,
-	ExternalLink
+	ExternalLink,
+	LayoutDashboard,
+	FolderKanban,
+	Inbox
 } from "lucide-react";
 
 type Tab = "overview" | "products" | "orders";
@@ -425,9 +428,14 @@ export const DashboardPage = () => {
 						>
 							<Menu className="size-5" />
 						</button>
-						<h1 className="text-lg font-bold text-slate-900 capitalize">
-							{activeTab} Management
-						</h1>
+						<div className="flex items-center gap-2 text-emerald-800">
+							{activeTab === "overview" && <LayoutDashboard className="size-5" />}
+							{activeTab === "products" && <FolderKanban className="size-5" />}
+							{activeTab === "orders" && <Inbox className="size-5" />}
+							<h1 className="text-lg font-bold text-slate-900 capitalize">
+								{activeTab} Management
+							</h1>
+						</div>
 					</div>
 
 					<div className="flex items-center gap-3">
