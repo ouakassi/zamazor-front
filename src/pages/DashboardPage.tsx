@@ -33,7 +33,8 @@ import {
 	AlertTriangle,
 	Menu,
 	ShoppingBag,
-	Search
+	Search,
+	ExternalLink
 } from "lucide-react";
 
 type Tab = "overview" | "products" | "orders";
@@ -590,6 +591,13 @@ export const DashboardPage = () => {
 															</td>
 															<td className="px-6 py-4 text-right">
 																<div className="flex items-center justify-end gap-1.5">
+																	<button
+																		onClick={() => window.open(`/product/${product.id}`, "_blank")}
+																		className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
+																		title="View Details in Store"
+																	>
+																		<ExternalLink className="size-3.5" />
+																	</button>
 																	<button
 																		onClick={() => openEditProductModal(product)}
 																		className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
