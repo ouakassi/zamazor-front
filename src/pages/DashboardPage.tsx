@@ -86,13 +86,25 @@ export const DashboardPage = () => {
 	const [prodImagePreview, setProdImagePreview] = useState<string | null>(null);
 	const [prodSubmitting, setProdSubmitting] = useState(false);
 
-	// Search and Pagination for Products
+	// Search, Filtering and Pagination for Products
 	const [productSearch, setProductSearch] = useState("");
 	const [productPage, setProductPage] = useState(1);
+	const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+	const [sortBy, setSortBy] = useState("name-asc");
 	const productsPerPage = 10;
 
 	const handleSearchChange = (value: string) => {
 		setProductSearch(value);
+		setProductPage(1);
+	};
+
+	const handleCategoryFilterChange = (value: string) => {
+		setSelectedCategoryFilter(value);
+		setProductPage(1);
+	};
+
+	const handleSortByChange = (value: string) => {
+		setSortBy(value);
 		setProductPage(1);
 	};
 
@@ -272,14 +284,29 @@ export const DashboardPage = () => {
 		.filter((o) => o.status !== "CANCELLED")
 		.reduce((sum, o) => sum + o.totalAmount, 0);
 
-	// Products filtering and pagination
-	const filteredProducts = products.filter((p) => {
-		const searchLower = productSearch.toLowerCase();
-		return (
-			p.name.toLowerCase().includes(searchLower) ||
-			p.category.toLowerCase().includes(searchLower)
-		);
-	});
+	// Products filtering, sorting and pagination
+	const filteredProducts = products
+		.filter((p) => {
+			const searchLower = productSearch.toLowerCase();
+			const matchesSearch =
+				p.name.toLowerCase().includes(searchLower) ||
+				p.category.toLowerCase().includes(searchLower);
+			const matchesCategory =
+				selectedCategoryFilter === "all" ||
+				p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
+			return matchesSearch && matchesCategory;
+		})
+		.sort((a, b) => {
+			if (sortBy === "name-asc") return a.name.localeCompare(b.name);
+			if (sortBy === "name-desc") return b.name.localeCompare(a.name);
+			
+			const priceA = parseFloat((a.price || "").replace(/[^0-9.]/g, "")) || 0;
+			const priceB = parseFloat((b.price || "").replace(/[^0-9.]/g, "")) || 0;
+			if (sortBy === "price-asc") return priceA - priceB;
+			if (sortBy === "price-desc") return priceB - priceA;
+
+			return 0;
+		});
 
 	const totalProductPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
 	const paginatedProducts = filteredProducts.slice(
@@ -452,20 +479,50 @@ export const DashboardPage = () => {
 							{/* TAB 2: PRODUCTS */}
 							{activeTab === "products" && (
 								<div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-									{/* Search bar & info */}
-									<div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
-										<div className="relative w-full sm:max-w-xs">
-											<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" strokeWidth={1.7} />
-											<Input
-												value={productSearch}
-												onChange={(e) => handleSearchChange(e.target.value)}
-												placeholder="Search products by name or category..."
-												className="pl-9 rounded-xl border-slate-200 focus-visible:ring-emerald-800 text-xs h-9 bg-slate-50/30"
-											/>
+									{/* Search, Filter, Sort Toolbar */}
+									<div className="p-4 border-b border-slate-100 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 animate-in fade-in duration-200">
+										<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+											{/* Search Input */}
+											<div className="relative flex-1">
+												<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" strokeWidth={1.7} />
+												<Input
+													value={productSearch}
+													onChange={(e) => handleSearchChange(e.target.value)}
+													placeholder="Search products..."
+													className="pl-9 rounded-xl border-slate-200 focus-visible:ring-emerald-800 text-xs h-9 bg-slate-50/30 w-full"
+												/>
+											</div>
+
+											{/* Category Filter Dropdown */}
+											<select
+												value={selectedCategoryFilter}
+												onChange={(e) => handleCategoryFilterChange(e.target.value)}
+												className="h-9 rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 cursor-pointer min-w-[130px]"
+											>
+												<option value="all">All Categories</option>
+												{categories.map((cat) => (
+													<option key={cat.id} value={cat.label.toLowerCase()}>
+														{cat.label}
+													</option>
+												))}
+											</select>
+
+											{/* Sort Dropdown */}
+											<select
+												value={sortBy}
+												onChange={(e) => handleSortByChange(e.target.value)}
+												className="h-9 rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 cursor-pointer min-w-[150px]"
+											>
+												<option value="name-asc">Sort by Name (A-Z)</option>
+												<option value="name-desc">Sort by Name (Z-A)</option>
+												<option value="price-asc">Price: Low to High</option>
+												<option value="price-desc">Price: High to Low</option>
+											</select>
 										</div>
-										<div className="text-xs text-slate-500 font-bold font-sans">
+
+										<div className="text-xs text-slate-500 font-bold font-sans text-right shrink-0 whitespace-nowrap">
 											{filteredProducts.length === 0 
-												? "No items match search" 
+												? "No items match criteria" 
 												: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, filteredProducts.length)} of ${filteredProducts.length} items`
 											}
 										</div>
