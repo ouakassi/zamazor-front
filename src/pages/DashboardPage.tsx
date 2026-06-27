@@ -31,7 +31,8 @@ import {
 	Home,
 	AlertTriangle,
 	Menu,
-	ShoppingBag
+	ShoppingBag,
+	Search
 } from "lucide-react";
 
 type Tab = "overview" | "products" | "orders";
@@ -66,6 +67,16 @@ export const DashboardPage = () => {
 	const [prodImage, setProdImage] = useState<File | null>(null);
 	const [prodImagePreview, setProdImagePreview] = useState<string | null>(null);
 	const [prodSubmitting, setProdSubmitting] = useState(false);
+
+	// Search and Pagination for Products
+	const [productSearch, setProductSearch] = useState("");
+	const [productPage, setProductPage] = useState(1);
+	const productsPerPage = 5;
+
+	const handleSearchChange = (value: string) => {
+		setProductSearch(value);
+		setProductPage(1);
+	};
 
 	const loadData = async () => {
 		setLoading(true);
@@ -224,6 +235,21 @@ export const DashboardPage = () => {
 	const totalSales = orders
 		.filter((o) => o.status !== "CANCELLED")
 		.reduce((sum, o) => sum + o.totalAmount, 0);
+
+	// Products filtering and pagination
+	const filteredProducts = products.filter((p) => {
+		const searchLower = productSearch.toLowerCase();
+		return (
+			p.name.toLowerCase().includes(searchLower) ||
+			p.category.toLowerCase().includes(searchLower)
+		);
+	});
+
+	const totalProductPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
+	const paginatedProducts = filteredProducts.slice(
+		(productPage - 1) * productsPerPage,
+		productPage * productsPerPage
+	);
 
 	return (
 		<div className="flex h-screen bg-slate-50 font-sans overflow-hidden text-slate-900">
@@ -389,11 +415,30 @@ export const DashboardPage = () => {
 
 							{/* TAB 2: PRODUCTS */}
 							{activeTab === "products" && (
-								<div className="bg-white rounded-3xl border border-emerald-900/5 shadow-md overflow-hidden animate-in fade-in duration-200">
+								<div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+									{/* Search bar & info */}
+									<div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
+										<div className="relative w-full sm:max-w-xs">
+											<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" strokeWidth={1.7} />
+											<Input
+												value={productSearch}
+												onChange={(e) => handleSearchChange(e.target.value)}
+												placeholder="Search products by name or category..."
+												className="pl-9 rounded-xl border-slate-200 focus-visible:ring-emerald-800 text-xs h-9 bg-slate-50/30"
+											/>
+										</div>
+										<div className="text-xs text-slate-500 font-bold font-sans">
+											{filteredProducts.length === 0 
+												? "No items match search" 
+												: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, filteredProducts.length)} of ${filteredProducts.length} items`
+											}
+										</div>
+									</div>
+
 									<div className="overflow-x-auto">
 										<table className="w-full text-left text-sm border-collapse">
 											<thead>
-												<tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400 bg-slate-50/50">
+												<tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/50">
 													<th className="px-6 py-4">Product</th>
 													<th className="px-6 py-4">Category</th>
 													<th className="px-6 py-4">Price</th>
@@ -401,49 +446,49 @@ export const DashboardPage = () => {
 												</tr>
 											</thead>
 											<tbody className="divide-y divide-slate-100">
-												{products.length === 0 ? (
+												{paginatedProducts.length === 0 ? (
 													<tr>
-														<td colSpan={4} className="px-6 py-10 text-center text-slate-400">
-															No products found. Click "New Product" to add.
+														<td colSpan={4} className="px-6 py-12 text-center text-slate-400 text-xs font-semibold">
+															No products match your filter.
 														</td>
 													</tr>
 												) : (
-													products.map((product) => (
-														<tr key={product.id} className="hover:bg-slate-50/40">
+													paginatedProducts.map((product) => (
+														<tr key={product.id} className="hover:bg-slate-50/40 transition-colors duration-150 group">
 															<td className="px-6 py-4">
 																<div className="flex items-center gap-3">
-																	<div className="size-12 shrink-0 bg-slate-100 rounded-xl p-1 flex items-center justify-center border border-slate-200/50">
+																	<div className="size-11 shrink-0 bg-slate-50 rounded-xl p-1.5 flex items-center justify-center border border-slate-100 group-hover:scale-105 transition-transform duration-200">
 																		<img src={product.image} alt={product.name} className="h-full object-contain" />
 																	</div>
 																	<div>
-																		<p className="font-bold text-slate-900 text-sm leading-tight">{product.name}</p>
-																		<p className="text-[10px] text-slate-400 mt-1 max-w-[200px] truncate">{product.flavor}</p>
+																		<p className="font-bold text-slate-900 text-xs leading-normal">{product.name}</p>
+																		<p className="text-[10px] text-slate-400 mt-0.5 max-w-[220px] truncate">{product.flavor}</p>
 																	</div>
 																</div>
 															</td>
 															<td className="px-6 py-4">
-																<span className="text-xs font-black uppercase bg-emerald-50 border border-emerald-900/5 text-emerald-800 px-2.5 py-0.5 rounded-full inline-block">
+																<span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 border border-slate-200/50 text-slate-700 px-2 py-0.5 rounded-md inline-block">
 																	{product.category}
 																</span>
 															</td>
-															<td className="px-6 py-4 font-black text-slate-900">
+															<td className="px-6 py-4 font-black text-slate-900 text-xs">
 																{product.price}
 															</td>
 															<td className="px-6 py-4 text-right">
-																<div className="flex items-center justify-end gap-2">
+																<div className="flex items-center justify-end gap-1.5">
 																	<button
 																		onClick={() => openEditProductModal(product)}
-																		className="p-1.5 hover:bg-emerald-50 hover:text-emerald-950 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																		className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
 																		title="Edit Product"
 																	>
-																		<Edit className="size-4" />
+																		<Edit className="size-3.5" />
 																	</button>
 																	<button
 																		onClick={() => handleDeleteProduct(product.id)}
-																		className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																		className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
 																		title="Delete Product"
 																	>
-																		<Trash2 className="size-4" />
+																		<Trash2 className="size-3.5" />
 																	</button>
 																</div>
 															</td>
@@ -453,6 +498,33 @@ export const DashboardPage = () => {
 											</tbody>
 										</table>
 									</div>
+
+									{/* Pagination footer */}
+									{totalProductPages > 1 && (
+										<div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 text-xs text-slate-500 font-semibold font-sans">
+											<div>
+												Page {productPage} of {totalProductPages}
+											</div>
+											<div className="flex items-center gap-1.5">
+												<Button
+													variant="outline"
+													onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+													disabled={productPage === 1}
+													className="h-8 px-3 rounded-lg border-slate-200 text-[10px] font-bold hover:bg-slate-50 cursor-pointer"
+												>
+													Previous
+												</Button>
+												<Button
+													variant="outline"
+													onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+													disabled={productPage === totalProductPages}
+													className="h-8 px-3 rounded-lg border-slate-200 text-[10px] font-bold hover:bg-slate-50 cursor-pointer"
+												>
+													Next
+												</Button>
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 
