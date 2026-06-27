@@ -27,6 +27,10 @@ export const OrdersPage = () => {
 	const [confirmDestructive, setConfirmDestructive] = useState(false);
 	const [confirmText, setConfirmText] = useState("Continue");
 
+	// Pagination
+	const [orderPage, setOrderPage] = useState(1);
+	const ordersPerPage = 10;
+
 	const loadData = async () => {
 		setLoading(true);
 		try {
@@ -55,11 +59,11 @@ export const OrdersPage = () => {
 
 	const handleCancelOrder = (orderId: string) => {
 		const order = orders.find((o) => o.id === orderId);
-		const orderNumber = order ? order.orderNumber : "this order";
+		const orderLabel = order ? order.id.slice(0, 8).toUpperCase() : "this order";
 
 		showConfirm(
 			"Cancel Order",
-			`Are you sure you want to cancel order ${orderNumber}? This action cannot be undone and will permanently update the status.`,
+			`Are you sure you want to cancel order ${orderLabel}? This action cannot be undone and will permanently update the status.`,
 			async () => {
 				try {
 					const success = await orderService.cancelOrder(orderId);
@@ -93,6 +97,12 @@ export const OrdersPage = () => {
 		);
 	}
 
+	const totalOrderPages = Math.ceil(orders.length / ordersPerPage) || 1;
+	const paginatedOrders = orders.slice(
+		(orderPage - 1) * ordersPerPage,
+		orderPage * ordersPerPage
+	);
+
 	return (
 		<div className="space-y-6">
 			{/* Sub-header controls */}
@@ -102,35 +112,96 @@ export const OrdersPage = () => {
 			</div>
 
 			<div className="bg-white rounded-3xl border border-emerald-900/5 shadow-md overflow-hidden animate-in fade-in duration-200">
+				{/* Toolbar with count + mini pagination */}
+				<div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between gap-3">
+					<div className="text-xs text-slate-500 font-bold font-sans">
+						{orders.length === 0
+							? "No orders found"
+							: `Showing ${((orderPage - 1) * ordersPerPage) + 1}-${Math.min(orderPage * ordersPerPage, orders.length)} of ${orders.length} orders`
+						}
+					</div>
+					{totalOrderPages > 1 && (
+						<div className="flex items-center gap-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50/50 select-none">
+							<Button
+								variant="outline"
+								size="icon"
+								disabled={orderPage === 1}
+								onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+								className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center active:scale-95 transition-all"
+								title="Previous Page"
+							>
+								&larr;
+							</Button>
+							<span className="text-[10px] font-bold text-slate-500 px-1.5 min-w-[55px] text-center">
+								{orderPage} / {totalOrderPages}
+							</span>
+							<Button
+								variant="outline"
+								size="icon"
+								disabled={orderPage === totalOrderPages}
+								onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+								className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center active:scale-95 transition-all"
+								title="Next Page"
+							>
+								&rarr;
+							</Button>
+						</div>
+					)}
+				</div>
 				<div className="overflow-x-auto">
 					<table className="w-full text-left text-sm border-collapse">
 						<thead>
 							<tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50/50">
-								<th className="px-6 py-4">Order Number</th>
+								<th className="px-6 py-4">Order ID</th>
+								<th className="px-6 py-4">Items</th>
 								<th className="px-6 py-4">Date</th>
-								<th className="px-6 py-4">Total Amount</th>
+								<th className="px-6 py-4">Total</th>
+								<th className="px-6 py-4">Shipping</th>
 								<th className="px-6 py-4">Status</th>
 								<th className="px-6 py-4 text-right">Actions</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100">
-							{orders.length === 0 ? (
+							{paginatedOrders.length === 0 ? (
 								<tr>
-									<td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+									<td colSpan={7} className="px-6 py-10 text-center text-slate-400">
 										No orders found.
 									</td>
 								</tr>
 							) : (
-								orders.map((order) => (
+								paginatedOrders.map((order) => (
 									<tr key={order.id} className="hover:bg-slate-50/40">
-										<td className="px-6 py-4 font-sans font-bold text-slate-900">
-											{order.orderNumber}
+										<td className="px-6 py-4">
+											<Tooltip content={order.id}>
+												<span className="text-[10px] font-mono font-bold text-slate-500 cursor-help select-all">
+													{order.id.slice(0, 8).toUpperCase()}
+												</span>
+											</Tooltip>
 										</td>
-										<td className="px-6 py-4 text-slate-500">
+										<td className="px-6 py-4">
+											<div className="flex flex-col gap-0.5">
+												{order.items.slice(0, 2).map((item) => (
+													<span key={item.id} className="text-xs text-slate-700 font-semibold truncate max-w-[180px]">
+														{item.product?.name || "Unknown"} <span className="text-slate-400">x{item.quantity}</span>
+													</span>
+												))}
+												{order.items.length > 2 && (
+													<span className="text-[10px] text-slate-400 font-semibold">+{order.items.length - 2} more</span>
+												)}
+											</div>
+										</td>
+										<td className="px-6 py-4 text-slate-500 text-xs">
 											{new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
 										</td>
-										<td className="px-6 py-4 font-semibold text-slate-950">
-											{(order.totalAmount || 0).toFixed(2)} MAD
+										<td className="px-6 py-4 font-semibold text-slate-950 text-xs">
+											{(order.total || 0).toFixed(2)} MAD
+										</td>
+										<td className="px-6 py-4">
+											<Tooltip content={order.shippingAddress || "No address"}>
+												<span className="text-xs text-slate-500 truncate max-w-[140px] block cursor-help">
+													{order.shippingAddress || "—"}
+												</span>
+											</Tooltip>
 										</td>
 										<td className="px-6 py-4">
 											<span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
@@ -153,7 +224,7 @@ export const OrdersPage = () => {
 														<Eye className="size-4" />
 													</button>
 												</Tooltip>
-												{order.status !== "CANCELLED" && (
+												{order.status !== "CANCELED" && (
 													<Tooltip content="Cancel Order">
 														<button
 															onClick={() => handleCancelOrder(order.id)}
@@ -171,6 +242,49 @@ export const OrdersPage = () => {
 						</tbody>
 					</table>
 				</div>
+
+				{/* Bottom pagination */}
+				{totalOrderPages > 1 && (
+					<div className="p-4 border-t border-slate-100 bg-white flex items-center justify-center gap-2 select-none">
+						<Button
+							variant="outline"
+							size="icon"
+							disabled={orderPage === 1}
+							onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+							className="h-8 w-8 rounded-lg border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+						>
+							&larr;
+						</Button>
+						
+						{Array.from({ length: totalOrderPages }).map((_, i) => {
+							const pageNum = i + 1;
+							return (
+								<Button
+									key={pageNum}
+									variant={orderPage === pageNum ? "default" : "outline"}
+									onClick={() => setOrderPage(pageNum)}
+									className={`h-8 w-8 rounded-lg font-bold cursor-pointer transition-all text-xs flex items-center justify-center ${
+										orderPage === pageNum
+											? "bg-emerald-900 hover:bg-emerald-950 text-white border-emerald-900 shadow-sm"
+											: "border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900"
+									}`}
+								>
+									{pageNum}
+								</Button>
+							);
+						})}
+
+						<Button
+							variant="outline"
+							size="icon"
+							disabled={orderPage === totalOrderPages}
+							onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+							className="h-8 w-8 rounded-lg border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center"
+						>
+							&rarr;
+						</Button>
+					</div>
+				)}
 			</div>
 
 			{/* MODAL: ORDER DETAILS */}
@@ -186,7 +300,7 @@ export const OrdersPage = () => {
 
 						<div className="flex flex-wrap items-baseline gap-3 mb-6">
 							<h3 className="font-sans text-xl font-semibold text-slate-950">
-								Order {selectedOrder.orderNumber}
+								Order <span className="font-mono text-base">{selectedOrder.id.slice(0, 8).toUpperCase()}</span>
 							</h3>
 							<span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
 								selectedOrder.status === "PENDING"
@@ -202,7 +316,7 @@ export const OrdersPage = () => {
 						<div className="grid gap-6 sm:grid-cols-2 text-sm mb-6 border-b border-slate-100 pb-5">
 							<div>
 								<span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Shipping Details</span>
-								<p className="font-bold text-slate-900 leading-relaxed whitespace-pre-line">{selectedOrder.shippingAddress}</p>
+								<p className="font-bold text-slate-900 leading-relaxed whitespace-pre-line">{selectedOrder.shippingAddress || "No shipping address provided."}</p>
 							</div>
 							<div>
 								<span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Order Date & Metadata</span>
@@ -210,7 +324,7 @@ export const OrdersPage = () => {
 									Date: <strong className="text-slate-950 font-sans">{new Date(selectedOrder.createdAt).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}</strong>
 								</p>
 								<p className="text-slate-800 mt-1">
-									Total Amount: <strong className="text-slate-950 font-sans">{(selectedOrder.totalAmount || 0).toFixed(2)} MAD</strong>
+									Total Amount: <strong className="text-slate-950 font-sans">{(selectedOrder.total || 0).toFixed(2)} MAD</strong>
 								</p>
 							</div>
 						</div>
@@ -222,17 +336,17 @@ export const OrdersPage = () => {
 									<div key={item.id} className="flex justify-between items-center p-4 text-sm">
 										<div className="flex items-center gap-2">
 											<Folder className="size-4 text-emerald-800/60" />
-											<span className="font-bold text-slate-900">{item.productName}</span>
+											<span className="font-bold text-slate-900">{item.product?.name || "Unknown Product"}</span>
 											<span className="text-xs text-slate-400 font-bold">x{item.quantity}</span>
 										</div>
-										<span className="font-semibold text-slate-950">{((item.price || 0) * (item.quantity || 0)).toFixed(2)} MAD</span>
+										<span className="font-semibold text-slate-950">{((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2)} MAD</span>
 									</div>
 								))}
 							</div>
 						</div>
 
 						<div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-8">
-							{selectedOrder.status !== "CANCELLED" && (
+							{selectedOrder.status !== "CANCELED" && (
 								<Button
 									variant="outline"
 									onClick={() => handleCancelOrder(selectedOrder.id)}

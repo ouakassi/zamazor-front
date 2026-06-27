@@ -1,21 +1,32 @@
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { isSystemError } from "@/shared/types";
 
+export interface BackendOrderProduct {
+	id: string;
+	name: string;
+	description?: string | null;
+	imageUrl?: string | null;
+	price: number;
+	stockQuantity: number;
+	reservedQuantity: number;
+	category: { id: string; label: string };
+}
+
 export interface BackendOrderItem {
 	id: string;
-	productId: string;
-	productName: string;
-	price: number;
+	unitPrice: number;
+	product: BackendOrderProduct;
 	quantity: number;
 }
 
 export interface BackendOrder {
 	id: string;
-	orderNumber: string;
-	createdAt: string;
+	userId: string;
 	status: string;
-	totalAmount: number;
+	total: number;
 	items: BackendOrderItem[];
+	createdAt: string;
+	shippingAddress: string;
 }
 
 export interface CheckoutRequest {

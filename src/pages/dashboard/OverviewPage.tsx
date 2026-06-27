@@ -35,8 +35,8 @@ export const OverviewPage = () => {
 	}, [fetchStoreProducts]);
 
 	const totalSales = orders
-		.filter((o) => o.status !== "CANCELLED")
-		.reduce((sum, o) => sum + o.totalAmount, 0);
+		.filter((o) => o.status !== "CANCELED")
+		.reduce((sum, o) => sum + o.total, 0);
 
 	if (loading) {
 		return (
@@ -93,19 +93,19 @@ export const OverviewPage = () => {
 					<div className="space-y-4">
 						<div className="flex items-end justify-between gap-2 h-48 pt-4">
 							{orders.slice(-7).map((order) => {
-								const maxAmount = Math.max(...orders.map((o) => o.totalAmount)) || 1;
-								const heightPercentage = Math.max(10, (order.totalAmount / maxAmount) * 100);
+								const maxAmount = Math.max(...orders.map((o) => o.total)) || 1;
+								const heightPercentage = Math.max(10, (order.total / maxAmount) * 100);
 								return (
 									<div key={order.id} className="flex-1 flex flex-col items-center gap-2 group">
 										<div className="text-[10px] font-bold text-slate-950 opacity-0 group-hover:opacity-100 transition-opacity">
-											{(order.totalAmount || 0).toFixed(0)} MAD
+											{(order.total || 0).toFixed(0)} MAD
 										</div>
 										<div
 											className="w-full bg-emerald-900 group-hover:bg-emerald-950 rounded-lg transition-all duration-200"
 											style={{ height: `${heightPercentage}%` }}
 										/>
-										<span className="text-[10px] font-sans text-slate-400 truncate w-full text-center">
-											{order.orderNumber}
+										<span className="text-[10px] font-mono font-sans text-slate-400 truncate w-full text-center">
+											{order.id.slice(0, 8).toUpperCase()}
 										</span>
 									</div>
 								);

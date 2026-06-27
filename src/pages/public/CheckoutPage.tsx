@@ -120,7 +120,7 @@ export const CheckoutPage = () => {
 
 			setIsSubmitting(false);
 			setIsSuccess(true);
-			setOrderNumber(response.orderNumber);
+			setOrderNumber(response.id.slice(0, 8).toUpperCase());
 			toast.success("Order placed successfully!");
 		} catch {
 			setIsSubmitting(false);
