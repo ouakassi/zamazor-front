@@ -16,6 +16,7 @@ import { type Product } from "@/core/config/productsData";
 import { toast } from "sonner";
 import { SidebarNav } from "@/shared/components/ui/dashboard-sidebar";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import {
 	BarChart3,
 	Box,
@@ -573,8 +574,12 @@ export const DashboardPage = () => {
 												) : (
 													paginatedProducts.map((product) => (
 														<tr key={product.id} className="hover:bg-slate-50/40 transition-colors duration-150 group">
-															<td className="px-6 py-4 text-[10px] font-sans text-slate-400 max-w-[70px] truncate select-all" title={product.id}>
-																{product.id}
+															<td className="px-6 py-4">
+																<Tooltip content={product.id}>
+																	<span className="text-[10px] font-sans text-slate-400 max-w-[70px] truncate select-all block cursor-help">
+																		{product.id}
+																	</span>
+																</Tooltip>
 															</td>
 															<td className="px-6 py-4">
 																<div className="flex items-center gap-3">
@@ -611,27 +616,30 @@ export const DashboardPage = () => {
 															</td>
 															<td className="px-6 py-4 text-right">
 																<div className="flex items-center justify-end gap-1.5">
-																	<button
-																		onClick={() => window.open(`/product/${product.id}`, "_blank")}
-																		className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
-																		title="View Details in Store"
-																	>
-																		<ExternalLink className="size-3.5" />
-																	</button>
-																	<button
-																		onClick={() => openEditProductModal(product)}
-																		className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
-																		title="Edit Product"
-																	>
-																		<Edit className="size-3.5" />
-																	</button>
-																	<button
-																		onClick={() => handleDeleteProduct(product.id)}
-																		className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
-																		title="Delete Product"
-																	>
-																		<Trash2 className="size-3.5" />
-																	</button>
+																	<Tooltip content="View in Store">
+																		<button
+																			onClick={() => window.open(`/product/${product.id}`, "_blank")}
+																			className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
+																		>
+																			<ExternalLink className="size-3.5" />
+																		</button>
+																	</Tooltip>
+																	<Tooltip content="Edit Product">
+																		<button
+																			onClick={() => openEditProductModal(product)}
+																			className="p-1.5 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
+																		>
+																			<Edit className="size-3.5" />
+																		</button>
+																	</Tooltip>
+																	<Tooltip content="Delete Product">
+																		<button
+																			onClick={() => handleDeleteProduct(product.id)}
+																			className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer active:scale-95"
+																		>
+																			<Trash2 className="size-3.5" />
+																		</button>
+																	</Tooltip>
 																</div>
 															</td>
 														</tr>
@@ -732,21 +740,23 @@ export const DashboardPage = () => {
 															</td>
 															<td className="px-6 py-4 text-right">
 																<div className="flex items-center justify-end gap-2">
-																	<button
-																		onClick={() => setSelectedOrder(order)}
-																		className="p-1.5 hover:bg-emerald-50 hover:text-emerald-950 rounded-lg text-slate-400 transition-colors cursor-pointer"
-																		title="View Details"
-																	>
-																		<Eye className="size-4" />
-																	</button>
-																	{order.status !== "CANCELLED" && (
+																	<Tooltip content="View Details">
 																		<button
-																			onClick={() => handleCancelOrder(order.id)}
-																			className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer"
-																			title="Cancel Order"
+																			onClick={() => setSelectedOrder(order)}
+																			className="p-1.5 hover:bg-emerald-50 hover:text-emerald-950 rounded-lg text-slate-400 transition-colors cursor-pointer"
 																		>
-																			<X className="size-4" />
+																			<Eye className="size-4" />
 																		</button>
+																	</Tooltip>
+																	{order.status !== "CANCELLED" && (
+																		<Tooltip content="Cancel Order">
+																			<button
+																				onClick={() => handleCancelOrder(order.id)}
+																				className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																			>
+																				<X className="size-4" />
+																			</button>
+																		</Tooltip>
 																	)}
 																</div>
 															</td>
