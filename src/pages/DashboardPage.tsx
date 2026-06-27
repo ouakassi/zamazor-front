@@ -88,6 +88,11 @@ export const DashboardPage = () => {
 	const [prodImagePreview, setProdImagePreview] = useState<string | null>(null);
 	const [prodSubmitting, setProdSubmitting] = useState(false);
 
+	// Validation states
+	const [nameError, setNameError] = useState("");
+	const [priceError, setPriceError] = useState("");
+	const [stockError, setStockError] = useState("");
+
 	// Search, Filtering and Pagination for Products
 	const [productSearch, setProductSearch] = useState("");
 	const [productPage, setProductPage] = useState(1);
@@ -152,6 +157,9 @@ export const DashboardPage = () => {
 		setProdImage(null);
 		setProdImagePreview(null);
 		setEditingProduct(null);
+		setNameError("");
+		setPriceError("");
+		setStockError("");
 	};
 
 	const openNewProductModal = () => {
@@ -179,8 +187,37 @@ export const DashboardPage = () => {
 
 	const handleProductSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!prodName || !prodPrice || !prodCategory) {
-			toast.error("Please fill in all required fields.");
+		
+		let hasErrors = false;
+
+		// Validate product name
+		if (!prodName.trim()) {
+			setNameError("Product name is required.");
+			hasErrors = true;
+		} else {
+			setNameError("");
+		}
+
+		// Validate price
+		const parsedPrice = parseFloat(prodPrice);
+		if (isNaN(parsedPrice) || parsedPrice <= 0) {
+			setPriceError("Price must be a positive number.");
+			hasErrors = true;
+		} else {
+			setPriceError("");
+		}
+
+		// Validate stock quantity
+		const parsedStock = parseInt(prodStock);
+		if (isNaN(parsedStock) || parsedStock < 0) {
+			setStockError("Stock must be a non-negative integer.");
+			hasErrors = true;
+		} else {
+			setStockError("");
+		}
+
+		if (hasErrors) {
+			toast.error("Please correct the form errors before submitting.");
 			return;
 		}
 
@@ -794,11 +831,15 @@ export const DashboardPage = () => {
 									<label className="text-xs font-bold text-slate-600">Product Name *</label>
 									<Input
 										value={prodName}
-										onChange={(e) => setProdName(e.target.value)}
+										onChange={(e) => {
+											setProdName(e.target.value);
+											if (e.target.value.trim()) setNameError("");
+										}}
 										placeholder="e.g. Organic Greens Powder"
 										required
-										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+										className={`rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 ${nameError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
 									/>
+									{nameError && <p className="text-[10px] font-semibold text-red-500 mt-0.5">{nameError}</p>}
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-bold text-slate-600">Category *</label>
@@ -824,21 +865,31 @@ export const DashboardPage = () => {
 										type="number"
 										step="0.01"
 										value={prodPrice}
-										onChange={(e) => setProdPrice(e.target.value)}
+										onChange={(e) => {
+											setProdPrice(e.target.value);
+											const val = parseFloat(e.target.value);
+											if (!isNaN(val) && val > 0) setPriceError("");
+										}}
 										placeholder="e.g. 29.99"
 										required
-										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+										className={`rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 ${priceError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
 									/>
+									{priceError && <p className="text-[10px] font-semibold text-red-500 mt-0.5">{priceError}</p>}
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-bold text-slate-600">Stock Quantity</label>
 									<Input
 										type="number"
 										value={prodStock}
-										onChange={(e) => setProdStock(e.target.value)}
+										onChange={(e) => {
+											setProdStock(e.target.value);
+											const stkVal = parseInt(e.target.value);
+											if (!isNaN(stkVal) && stkVal >= 0) setStockError("");
+										}}
 										placeholder="e.g. 100"
-										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+										className={`rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 ${stockError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
 									/>
+									{stockError && <p className="text-[10px] font-semibold text-red-500 mt-0.5">{stockError}</p>}
 								</div>
 							</div>
 
@@ -882,6 +933,18 @@ export const DashboardPage = () => {
 										onChange={(e) => {
 											const file = e.target.files?.[0];
 											if (file) {
+												// Validate file size (max 5MB)
+												const maxBytes = 5 * 1024 * 1024;
+												if (file.size > maxBytes) {
+													toast.error("File is too large. Image size must be less than 5MB.");
+													return;
+												}
+												// Validate file type
+												const validTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+												if (!validTypes.includes(file.type)) {
+													toast.error("Invalid file format. Please upload JPEG, PNG, or WEBP.");
+													return;
+												}
 												setProdImage(file);
 												setProdImagePreview(URL.createObjectURL(file));
 											}
@@ -891,21 +954,21 @@ export const DashboardPage = () => {
 								</div>
 							</div>
 
-							<div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+							<div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6 animate-in fade-in duration-200">
 								<Button
 									type="button"
 									variant="ghost"
 									onClick={() => setIsProductModalOpen(false)}
-									className="rounded-xl cursor-pointer"
+									className="h-10 px-5 rounded-xl cursor-pointer font-semibold text-xs text-slate-700 hover:bg-slate-50"
 								>
 									Cancel
 								</Button>
 								<Button
 									type="submit"
 									disabled={prodSubmitting}
-									className="bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl font-bold cursor-pointer"
+									className="h-10 px-5 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl font-bold cursor-pointer text-xs flex items-center gap-1.5 shadow-sm"
 								>
-									{prodSubmitting ? "Saving..." : "Save Product"}
+									{prodSubmitting ? "Saving..." : editingProduct ? "Save Changes" : "Create Product"}
 								</Button>
 							</div>
 						</form>
@@ -976,7 +1039,7 @@ export const DashboardPage = () => {
 								<Button
 									variant="outline"
 									onClick={() => handleCancelOrder(selectedOrder.id)}
-									className="border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer font-semibold flex items-center gap-1.5"
+									className="h-10 px-5 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer font-semibold flex items-center gap-1.5 text-xs"
 								>
 									<AlertTriangle className="size-4" />
 									Cancel Order
@@ -984,7 +1047,7 @@ export const DashboardPage = () => {
 							)}
 							<Button
 								onClick={() => setSelectedOrder(null)}
-								className="bg-slate-900 hover:bg-slate-950 text-white rounded-xl font-bold cursor-pointer"
+								className="h-10 px-5 bg-slate-900 hover:bg-slate-950 text-white rounded-xl font-bold cursor-pointer text-xs"
 							>
 								Close
 							</Button>
