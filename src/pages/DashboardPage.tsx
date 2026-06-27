@@ -855,23 +855,40 @@ export const DashboardPage = () => {
 
 							<div className="space-y-2">
 								<label className="text-xs font-bold text-slate-600">Product Thumbnail</label>
-								{prodImagePreview && (
-									<div className="size-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-1 mb-2">
-										<img src={prodImagePreview} alt="Preview" className="h-full w-full object-contain" />
-									</div>
-								)}
-								<input
-									type="file"
-									accept="image/*"
-									onChange={(e) => {
-										const file = e.target.files?.[0];
-										if (file) {
-											setProdImage(file);
-											setProdImagePreview(URL.createObjectURL(file));
-										}
-									}}
-									className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-								/>
+								<div className="relative group border-2 border-dashed border-emerald-900/10 hover:border-emerald-800/50 rounded-2xl p-6 bg-slate-50/40 hover:bg-emerald-50/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 min-h-[140px]">
+									{prodImagePreview ? (
+										<div className="flex flex-col items-center gap-2">
+											<div className="size-20 rounded-xl overflow-hidden bg-white p-1 border border-slate-100 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+												<img src={prodImagePreview} alt="Preview" className="h-full object-contain" />
+											</div>
+											<span className="text-[10px] font-bold text-slate-400 group-hover:text-emerald-800 transition-colors">
+												Click to replace image
+											</span>
+										</div>
+									) : (
+										<div className="flex flex-col items-center gap-2">
+											<div className="p-3 bg-emerald-50 rounded-full text-emerald-800 group-hover:scale-110 transition-transform duration-200">
+												<Plus className="size-5" />
+											</div>
+											<div className="space-y-0.5">
+												<span className="text-xs font-bold text-slate-700 block">Upload Product Image</span>
+												<span className="text-[10px] text-slate-400 block">PNG, JPG, or WEBP up to 5MB</span>
+											</div>
+										</div>
+									)}
+									<input
+										type="file"
+										accept="image/*"
+										onChange={(e) => {
+											const file = e.target.files?.[0];
+											if (file) {
+												setProdImage(file);
+												setProdImagePreview(URL.createObjectURL(file));
+											}
+										}}
+										className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+									/>
+								</div>
 							</div>
 
 							<div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
