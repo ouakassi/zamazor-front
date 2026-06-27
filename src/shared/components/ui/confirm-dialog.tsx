@@ -28,12 +28,12 @@ export const ConfirmDialog = ({
 			{/* Backdrop click close */}
 			<div className="absolute inset-0" onClick={onClose} />
 			
-			<div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 animate-in zoom-in-95 duration-200 flex flex-col gap-4">
-				<div>
-					<h3 className="font-sans text-base font-semibold text-slate-900 leading-none mb-2">{title}</h3>
-					<p className="font-sans text-xs text-slate-500 leading-relaxed">{description}</p>
+			<div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl p-6 animate-in zoom-in-95 duration-200 flex flex-col gap-5">
+				<div className="space-y-1.5">
+					<h3 className="font-sans text-lg font-semibold text-slate-900 leading-none">{title}</h3>
+					<p className="font-sans text-sm text-slate-500 leading-normal">{description}</p>
 				</div>
-				<div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+				<div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
 					<Button
 						variant="outline"
 						onClick={onClose}

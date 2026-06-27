@@ -198,9 +198,12 @@ export const DashboardPage = () => {
 	};
 
 	const handleDeleteProduct = (productId: string) => {
+		const product = products.find((p) => p.id === productId);
+		const productName = product ? product.name : "this product";
+
 		showConfirm(
 			"Delete Product",
-			"Are you sure you want to delete this product? This action cannot be undone and will permanently remove the item from the catalog.",
+			`Are you sure you want to delete "${productName}"? This action cannot be undone and will permanently remove this item from the catalog.`,
 			async () => {
 				try {
 					const success = await productService.deleteProduct(productId);
@@ -221,9 +224,12 @@ export const DashboardPage = () => {
 	};
 
 	const handleCancelOrder = (orderId: string) => {
+		const order = orders.find((o) => o.id === orderId);
+		const orderNumber = order ? order.orderNumber : "this order";
+
 		showConfirm(
 			"Cancel Order",
-			"Are you sure you want to cancel this order? This action cannot be undone and will update the order status permanently.",
+			`Are you sure you want to cancel order ${orderNumber}? This action cannot be undone and will permanently update the status.`,
 			async () => {
 				try {
 					const success = await orderService.cancelOrder(orderId);
