@@ -17,8 +17,13 @@ const LoadingScreen = () => (
 	</div>
 );
 
-export const RequireAuth = () => {
+interface RequireAuthProps {
+	readonly allowedRoles?: readonly ("ADMIN" | "MERCHANT" | "USER")[];
+}
+
+export const RequireAuth = ({ allowedRoles }: RequireAuthProps) => {
 	const status = useAuthStore((state) => state.status);
+	const user = useAuthStore((state) => state.user);
 	const location = useLocation();
 
 	if (status === AuthStatus.Loading) return <LoadingScreen />;
@@ -31,5 +36,14 @@ export const RequireAuth = () => {
 			<Navigate to={APP_ROUTES.AUTH.LOGIN} state={{ from: location }} replace />
 		);
 	}
+
+	if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+		notify.error("Access Denied", {
+			id: "unauthorized-role",
+			description: "You do not have permission to view this page.",
+		});
+		return <Navigate to={APP_ROUTES.HOME} replace />;
+	}
+
 	return <Outlet />;
 };

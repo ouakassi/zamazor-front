@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from "@/core/routes/paths";
 import { publicApiRequest } from "@/shared/utils/axiosPublic";
 import { clearAuth, useAuthStore } from "../stores/authStore";
+import { useCartStore } from "@/shared/hooks/use-cart-store";
 import {
 	refreshResponseSchema,
 	type RefreshResponse,
@@ -14,10 +15,10 @@ import {
 	type LoginResponse,
 } from "../schemas/loginSchema";
 import type { User } from "../schemas/userSchema";
-import type { RegisterRequest } from "../schemas/registerSchema";
+import type { RegisterApiRequest } from "../schemas/registerSchema";
 
 export const authService = {
-	register: async (data: RegisterRequest) => {
+	register: async (data: RegisterApiRequest) => {
 		return publicApiRequest<User>(
 			{
 				url: API_ENDPOINTS.AUTH.REGISTER,
@@ -61,6 +62,10 @@ export const authService = {
 			status: AuthStatus.Authenticated,
 		});
 		tokenManager.setAccessToken(accessToken);
+
+		useCartStore.getState().syncWithBackend().catch((err) => {
+			console.warn("Failed to sync cart after login:", err);
+		});
 
 		return response;
 	},

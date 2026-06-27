@@ -3,7 +3,6 @@ import axios, {
 	type AxiosRequestConfig,
 	type InternalAxiosRequestConfig,
 } from "axios";
-import router from "@/core/routes/router";
 import { tokenManager } from "@/features/auth/globals/tokenManager";
 import { CONFIG } from "@/core/config/constants";
 import { APP_ROUTES } from "@/core/routes/paths";
@@ -57,7 +56,7 @@ axiosPrivate.interceptors.response.use(
 	async (error: AxiosError) => {
 		const prevRequest = error.config as RetryableRequestConfig | undefined;
 		const shouldRetryRequest =
-			error.response?.status === 401 && prevRequest && !prevRequest._retry;
+			(error.response?.status === 401 || error.response?.status === 403) && prevRequest && !prevRequest._retry;
 
 		if (!shouldRetryRequest) return Promise.reject(error);
 		if (isRefreshing) {
@@ -87,7 +86,9 @@ axiosPrivate.interceptors.response.use(
 		} catch (refreshError) {
 			processQueue(refreshError, null);
 
-			router.navigate(APP_ROUTES.AUTH.LOGIN, { replace: true });
+			import("@/core/routes/router").then((m) => {
+				m.default.navigate(APP_ROUTES.AUTH.LOGIN, { replace: true });
+			});
 			if (tokenManager.getAccessToken()) {
 				notify.error("Session Expired", {
 					description:

@@ -1,44 +1,98 @@
-import { createBrowserRouter } from "react-router";
+/* eslint-disable react-refresh/only-export-components */
+import { createBrowserRouter, Outlet } from "react-router";
 
 import { APP_ROUTES } from "./paths";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
+import { DashboardPage } from "@/pages/DashboardPage";
 import NotFound from "@/pages/NotFound";
+import { HomePage } from "@/pages/public/HomePage";
 import LoginPage from "@/pages/public/LoginPage";
 import { RegisterPage } from "@/pages/public/RegisterPage";
+import { ProductDetailPage } from "@/pages/public/ProductDetailPage";
+import { CartPage } from "@/pages/public/CartPage";
+import { CheckoutPage } from "@/pages/public/CheckoutPage";
+import { ShopPage } from "@/pages/public/ShopPage";
+import { WishlistPage } from "@/pages/public/WishlistPage";
+import { ProfilePage } from "@/pages/ProfilePage";
+import { useScrollToTop } from "@/shared/hooks/use-scroll-to-top";
+import { MainLayout } from "@/shared/layouts/MainLayout";
+
+const RootLayout = () => {
+	useScrollToTop();
+	return <Outlet />;
+};
 
 const router = createBrowserRouter([
 	{
-		path: APP_ROUTES.AUTH.REGISTER,
-		element: <RegisterPage />,
-	},
-	{
-		path: APP_ROUTES.AUTH.LOGIN,
-		element: <LoginPage />,
-	},
-	{
-		element: <RequireAuth />,
+		element: <RootLayout />,
 		children: [
 			{
-				path: APP_ROUTES.HOME,
-				element: (
-					<div className="flex min-h-screen items-center justify-center bg-background text-foreground antialiased font-sans">
-						<div className="text-center space-y-2">
-							<h1 className="text-3xl font-extrabold tracking-tight">
-								Zamazor Clean Base
-							</h1>
-							<p className="text-muted-foreground text-sm">
-								React Router, Axios, and Shadcn/UI are fully configured.
-							</p>
-						</div>
-					</div>
-				),
+				element: <MainLayout />,
+				children: [
+					{
+						path: APP_ROUTES.HOME,
+						element: <HomePage />,
+					},
+					{
+						path: APP_ROUTES.PRODUCT,
+						element: <ProductDetailPage />,
+					},
+					{
+						path: APP_ROUTES.SHOP,
+						element: <ShopPage />,
+					},
+					{
+						path: APP_ROUTES.CART,
+						element: <CartPage />,
+					},
+					{
+						path: APP_ROUTES.WISHLIST,
+						element: <WishlistPage />,
+					},
+					{
+						element: <RequireAuth />,
+						children: [
+							{
+								path: APP_ROUTES.PROFILE,
+								element: <ProfilePage />,
+							},
+						],
+					},
+				],
+			},
+			{
+				path: APP_ROUTES.AUTH.REGISTER,
+				element: <RegisterPage />,
+			},
+			{
+				path: APP_ROUTES.AUTH.LOGIN,
+				element: <LoginPage />,
+			},
+			{
+				element: <RequireAuth allowedRoles={["ADMIN"]} />,
+				children: [
+					{
+						path: APP_ROUTES.DASHBOARD,
+						element: <DashboardPage />,
+					},
+				],
+			},
+			{
+				element: <RequireAuth />,
+				children: [
+					{
+						path: APP_ROUTES.CHECKOUT,
+						element: <CheckoutPage />,
+					},
+				],
+			},
+			{
+				path: APP_ROUTES.NOT_FOUND,
+				element: <NotFound />,
 			},
 		],
-	},
-	{
-		path: APP_ROUTES.NOT_FOUND,
-		element: <NotFound />,
 	},
 ]);
 
 export default router;
+

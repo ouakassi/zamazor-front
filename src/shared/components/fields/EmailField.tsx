@@ -6,6 +6,7 @@ import type {
 	Path,
 	UseFormRegister,
 } from "react-hook-form";
+import { Mail } from "lucide-react";
 import { Field, FieldError, FieldLabel } from "@/shared/components/ui/field";
 
 interface FieldProps<T extends FieldValues> {
@@ -34,16 +35,20 @@ export const EmailField = <T extends FieldValues>({
 			<FieldLabel htmlFor={inputId} className="block text-sm/6 font-medium">
 				{label}
 			</FieldLabel>
-			<Input
-				id={inputId}
-				{...register(name)}
-				type="email"
-				placeholder={placeholder}
-				autoComplete="email"
-				aria-invalid={!!fieldError}
-				aria-required="true"
-				aria-describedby={fieldError ? errorId : undefined}
-			/>
+			<div className="relative">
+				<Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+				<Input
+					id={inputId}
+					{...register(name)}
+					type="email"
+					placeholder={placeholder}
+					autoComplete="email"
+					aria-invalid={!!fieldError}
+					aria-required="true"
+					aria-describedby={fieldError ? errorId : undefined}
+					className="pl-10"
+				/>
+			</div>
 
 			{fieldError && (
 				<FieldError id={errorId}>{fieldError.message as string}</FieldError>

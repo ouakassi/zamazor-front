@@ -3,6 +3,7 @@ import { userSchema, type User } from "../schemas/userSchema";
 import { API_ENDPOINTS } from "@/core/routes/paths";
 import { isSystemError } from "@/shared/types";
 import { clearAuth, useAuthStore } from "../stores/authStore";
+import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { AuthStatus } from "../types";
 
 export const userService = {
@@ -24,6 +25,52 @@ export const userService = {
 		}
 		const user = parsed.data;
 		useAuthStore.setState({ user, status: AuthStatus.Authenticated });
+
+		useCartStore.getState().syncWithBackend().catch((err) => {
+			console.warn("Failed to sync cart after fetching user:", err);
+		});
+
 		return user;
+	},
+
+	getUserById: async (id: string): Promise<User | null> => {
+		const response = await privateApiRequest<User>({
+			url: `/users/${id}`,
+			method: "GET",
+		});
+
+		if (isSystemError(response)) {
+			console.error(`Failed to fetch user by id ${id}:`, response);
+			return null;
+		}
+		const parsed = userSchema.safeParse(response);
+		if (!parsed.success) {
+			console.error("User data validation failed:", parsed.error);
+			return null;
+		}
+		return parsed.data;
+	},
+
+	updateCurrentUser: async (payload: { fullName: string; shippingAddress: string | null }): Promise<User | null> => {
+		const response = await privateApiRequest<User>({
+			url: "/users/me",
+			method: "PUT",
+			data: payload,
+		});
+
+		if (isSystemError(response)) {
+			console.error("Failed to update user profile:", response);
+			return null;
+		}
+
+		const parsed = userSchema.safeParse(response);
+		if (!parsed.success) {
+			console.error("Updated user data validation failed:", parsed.error);
+			return null;
+		}
+
+		const updatedUser = parsed.data;
+		useAuthStore.setState({ user: updatedUser, status: AuthStatus.Authenticated });
+		return updatedUser;
 	},
 };

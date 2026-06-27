@@ -6,7 +6,7 @@ import type {
 	Path,
 	UseFormRegister,
 } from "react-hook-form";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Lock } from "lucide-react";
 import { Field, FieldError, FieldLabel } from "@/shared/components/ui/field";
 
 interface FieldProps<T extends FieldValues> {
@@ -39,6 +39,7 @@ export const PasswordField = <T extends FieldValues>({
 				{label}
 			</FieldLabel>
 			<div className="relative">
+				<Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
 				<Input
 					id={inputId}
 					{...register(name)}
@@ -48,7 +49,7 @@ export const PasswordField = <T extends FieldValues>({
 					aria-invalid={!!fieldError}
 					aria-required="true"
 					aria-describedby={fieldError ? errorId : undefined}
-					className="pr-10"
+					className="pl-10 pr-10"
 				/>
 				<button
 					type="button"

@@ -1,4 +1,4 @@
-import { Button } from "@/shared/components/ui/button";
+import { OriginButton } from "@/shared/components/ui/origin-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	loginRequestSchema,
@@ -14,6 +14,8 @@ import { authService } from "../../services/authService";
 import { isSystemError } from "@/shared/types";
 import { notify } from "@/lib/notify";
 
+import { useAuthStore } from "../../stores/authStore";
+
 export const LoginForm = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -25,7 +27,12 @@ export const LoginForm = () => {
 		if (isSystemError(response)) {
 			if (response.code === "REQUEST_CANCELLED") return;
 		} else {
-			navigate(from, { replace: true });
+			const user = useAuthStore.getState().user;
+			if (user?.role === "ADMIN") {
+				navigate(APP_ROUTES.DASHBOARD, { replace: true });
+			} else {
+				navigate(from, { replace: true });
+			}
 		}
 	};
 
@@ -72,18 +79,20 @@ export const LoginForm = () => {
 				/>
 				<button
 					type="button"
-					className="shrink-0 text-sm font-medium text-primary hover:text-primary/80 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors"
+					className="shrink-0 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors"
 				>
 					Forgot password?
 				</button>
 			</div>
-			<Button
+			<OriginButton
 				type="submit"
-				disabled={isSubmitting || !isDirty}
-				className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+				variant="emerald"
+				loading={isSubmitting}
+				disabled={!isDirty}
+				className="w-full flex justify-center rounded-lg font-semibold"
 			>
 				{isSubmitting ? "Signing in…" : "Sign in"}
-			</Button>
+			</OriginButton>
 		</form>
 	);
 };
