@@ -1,88 +1,831 @@
-import CONFIG from "@/core/config/constants";
-import { Button } from "@/shared/components/ui/button";
-import { useDocumentTitle } from "@/shared/hooks/use-document-title";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { APP_ROUTES } from "@/core/routes/paths";
+import CONFIG from "@/core/config/constants";
+import { useProductStore } from "@/features/products/stores/productStore";
+import { productService, BackendCategory } from "@/features/products/services/productService";
+import { orderService, BackendOrder } from "@/features/orders/services/orderService";
+import { authService } from "@/features/auth/services/authService";
+import { useAuthStore } from "@/features/auth/stores/authStore";
+import { type Product } from "@/core/config/productsData";
+import { toast } from "sonner";
 import {
-	BarChart3Icon,
-	BoxIcon,
-	ClipboardListIcon,
-	ShoppingCartIcon,
-	UsersIcon,
+	BarChart3,
+	Box,
+	ClipboardList,
+	ShoppingCart,
+	Users,
+	Plus,
+	Trash2,
+	Edit,
+	LogOut,
+	Eye,
+	X,
+	Folder,
+	Home,
+	AlertTriangle,
+	Menu,
+	ShoppingBag
 } from "lucide-react";
 
-const stats = [
-	{ label: "Orders", value: "0", icon: ShoppingCartIcon },
-	{ label: "Products", value: "0", icon: BoxIcon },
-	{ label: "Customers", value: "0", icon: UsersIcon },
-];
+type Tab = "overview" | "products" | "orders";
 
 export const DashboardPage = () => {
 	useDocumentTitle(`Dashboard | ${CONFIG.APP_NAME}`);
 	const navigate = useNavigate();
+	const user = useAuthStore((state) => state.user);
+	const fetchStoreProducts = useProductStore((state) => state.fetchProducts);
+
+	// Tabs & Sidebar state
+	const [activeTab, setActiveTab] = useState<Tab>("overview");
+	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+	// Data states
+	const [products, setProducts] = useState<Product[]>([]);
+	const [orders, setOrders] = useState<BackendOrder[]>([]);
+	const [categories, setCategories] = useState<BackendCategory[]>([]);
+	const [loading, setLoading] = useState(true);
+
+	// Modals states
+	const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+	const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+	const [selectedOrder, setSelectedOrder] = useState<BackendOrder | null>(null);
+
+	// Product Form state
+	const [prodName, setProdName] = useState("");
+	const [prodDesc, setProdDesc] = useState("");
+	const [prodPrice, setProdPrice] = useState("");
+	const [prodStock, setProdStock] = useState("");
+	const [prodCategory, setProdCategory] = useState("");
+	const [prodImage, setProdImage] = useState<File | null>(null);
+	const [prodImagePreview, setProdImagePreview] = useState<string | null>(null);
+	const [prodSubmitting, setProdSubmitting] = useState(false);
+
+	const loadData = async () => {
+		setLoading(true);
+		try {
+			const [prodsData, ordersData, catsData] = await Promise.all([
+				fetchStoreProducts(true),
+				orderService.getAllOrders(),
+				productService.getCategories(),
+			]);
+			setProducts(prodsData);
+			setOrders(ordersData);
+			setCategories(catsData);
+		} catch (error) {
+			console.error("Failed to load dashboard data:", error);
+			toast.error("Error loading dashboard data.");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		loadData();
+	}, []);
+
+	// Reset product form fields
+	const resetProductForm = () => {
+		setProdName("");
+		setProdDesc("");
+		setProdPrice("");
+		setProdStock("");
+		setProdCategory(categories[0]?.id || "");
+		setProdImage(null);
+		setProdImagePreview(null);
+		setEditingProduct(null);
+	};
+
+	const openNewProductModal = () => {
+		resetProductForm();
+		if (categories.length > 0) {
+			setProdCategory(categories[0].id);
+		}
+		setIsProductModalOpen(true);
+	};
+
+	const openEditProductModal = (product: Product) => {
+		setEditingProduct(product);
+		setProdName(product.name);
+		setProdDesc(product.flavor || ""); // Mapped to flavor / desc
+		setProdPrice(product.price.replace(/[^0-9.]/g, ""));
+		setProdStock("100"); // Default fallback stock
+
+		// Try matching category label with category IDs
+		const matchCat = categories.find(c => c.label.toLowerCase() === product.category.toLowerCase());
+		setProdCategory(matchCat ? matchCat.id : categories[0]?.id || "");
+		setProdImage(null);
+		setProdImagePreview(product.image);
+		setIsProductModalOpen(true);
+	};
+
+	const handleProductSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!prodName || !prodPrice || !prodCategory) {
+			toast.error("Please fill in all required fields.");
+			return;
+		}
+
+		setProdSubmitting(true);
+		try {
+			const formData = new FormData();
+			formData.append("name", prodName.trim());
+			formData.append("description", prodDesc.trim());
+			formData.append("price", parseFloat(prodPrice).toFixed(2));
+			formData.append("stockQuantity", String(parseInt(prodStock) || 0));
+			formData.append("categoryId", prodCategory);
+			if (prodImage) {
+				formData.append("image", prodImage);
+			}
+
+			let result;
+			if (editingProduct) {
+				result = await productService.updateProduct(editingProduct.id, formData);
+				if (result) toast.success("Product updated successfully!");
+			} else {
+				result = await productService.createProduct(formData);
+				if (result) toast.success("Product created successfully!");
+			}
+
+			if (result) {
+				setIsProductModalOpen(false);
+				resetProductForm();
+				await loadData();
+			} else {
+				toast.error("Failed to save product.");
+			}
+		} catch (error) {
+			console.error("Product submission failed:", error);
+			toast.error("An error occurred during submission.");
+		} finally {
+			setProdSubmitting(false);
+		}
+	};
+
+	const handleDeleteProduct = async (id: string) => {
+		if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+		try {
+			const success = await productService.deleteProduct(id);
+			if (success) {
+				toast.success("Product deleted successfully.");
+				await loadData();
+			} else {
+				toast.error("Failed to delete product.");
+			}
+		} catch (error) {
+			console.error("Product deletion failed:", error);
+			toast.error("An error occurred while deleting.");
+		}
+	};
+
+	const handleCancelOrder = async (orderId: string) => {
+		if (!window.confirm("Are you sure you want to cancel this order?")) return;
+
+		try {
+			const success = await orderService.cancelOrder(orderId);
+			if (success) {
+				toast.success("Order cancelled successfully.");
+				await loadData();
+				// Refresh selected order details modal if currently open
+				if (selectedOrder && selectedOrder.id === orderId) {
+					const updated = await orderService.getOrderById(orderId);
+					setSelectedOrder(updated);
+				}
+			} else {
+				toast.error("Failed to cancel order.");
+			}
+		} catch (error) {
+			console.error("Order cancellation failed:", error);
+			toast.error("An error occurred while cancelling.");
+		}
+	};
+
+	const handleLogout = async () => {
+		try {
+			await authService.logout();
+			toast.success("Successfully logged out.");
+			navigate(APP_ROUTES.HOME);
+		} catch (e) {
+			console.error("Logout API call failed, clearing auth locally:", e);
+			useAuthStore.setState({ user: null, status: 3 }); // AuthStatus.Unauthenticated
+			toast.success("Logged out.");
+			navigate(APP_ROUTES.HOME);
+		}
+	};
+
+	// Overview Metrics
+	const totalSales = orders
+		.filter((o) => o.status !== "CANCELLED")
+		.reduce((sum, o) => sum + o.totalAmount, 0);
 
 	return (
-		<main className="min-h-screen bg-slate-50 text-slate-950">
-			<header className="border-b border-slate-200 bg-white">
-				<div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-					<div>
-						<p className="text-sm font-medium text-slate-500">Admin</p>
-						<h1 className="text-xl font-bold">Dashboard</h1>
-					</div>
-					<div className="flex items-center gap-2.5">
-						<Button variant="outline" onClick={() => navigate(APP_ROUTES.HOME)} className="cursor-pointer rounded-xl">
-							View Storefront
-						</Button>
-						<Button className="bg-emerald-900 hover:bg-emerald-950 text-white font-semibold rounded-xl cursor-pointer">
-							New product
-						</Button>
+		<div className="flex h-screen bg-slate-50 font-sans overflow-hidden text-slate-900">
+			{/* Desktop Sidebar */}
+			<aside className="hidden md:flex flex-col w-64 bg-emerald-950 text-emerald-50 border-r border-emerald-900/20 shrink-0">
+				<div className="p-6 border-b border-emerald-900/20">
+					<div className="flex items-center gap-3">
+						<div className="p-2 bg-emerald-900 rounded-xl">
+							<ShoppingBag className="size-6 text-lime-300" />
+						</div>
+						<div>
+							<h2 className="font-playfair font-black tracking-tight text-lg text-white">Zamazor</h2>
+							<p className="text-[10px] text-lime-400 font-bold tracking-widest uppercase">Admin Desk</p>
+						</div>
 					</div>
 				</div>
-			</header>
 
-			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-				<section className="grid gap-4 md:grid-cols-3">
-					{stats.map(({ label, value, icon: Icon }) => (
-						<div
-							key={label}
-							className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+				<nav className="flex-1 px-4 py-6 space-y-1.5">
+					<button
+						onClick={() => setActiveTab("overview")}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+							activeTab === "overview"
+								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
+								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
+						}`}
+					>
+						<BarChart3 className="size-4" />
+						Overview
+					</button>
+
+					<button
+						onClick={() => setActiveTab("products")}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+							activeTab === "products"
+								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
+								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
+						}`}
+					>
+						<Box className="size-4" />
+						Products
+					</button>
+
+					<button
+						onClick={() => setActiveTab("orders")}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+							activeTab === "orders"
+								? "bg-emerald-900 text-lime-300 border-l-4 border-lime-300 pl-3"
+								: "text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white"
+						}`}
+					>
+						<ClipboardList className="size-4" />
+						Orders
+					</button>
+				</nav>
+
+				<div className="p-4 border-t border-emerald-900/20 bg-emerald-950/40">
+					<div className="flex items-center justify-between gap-3 px-2 py-2">
+						<div className="min-w-0">
+							<p className="text-xs font-bold text-white truncate">{user?.fullName || "Administrator"}</p>
+							<p className="text-[10px] text-emerald-300/60 truncate">{user?.email || "admin@zamazor.com"}</p>
+						</div>
+						<button
+							onClick={handleLogout}
+							title="Log Out"
+							className="p-1.5 hover:bg-emerald-900 rounded-lg text-emerald-300 hover:text-rose-400 transition-colors cursor-pointer"
 						>
-							<div className="flex items-center justify-between">
-								<p className="text-sm font-medium text-slate-500">{label}</p>
-								<Icon className="size-5 text-slate-400" aria-hidden="true" />
-							</div>
-							<p className="mt-4 text-3xl font-bold">{value}</p>
-						</div>
-					))}
-				</section>
+							<LogOut className="size-4" />
+						</button>
+					</div>
+				</div>
+			</aside>
 
-				<section className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-					<div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-						<div className="flex items-center gap-3">
-							<BarChart3Icon className="size-5 text-slate-500" aria-hidden="true" />
-							<h2 className="font-bold">Sales overview</h2>
+			{/* Mobile Sidebar overlay */}
+			{isMobileSidebarOpen && (
+				<div
+					onClick={() => setIsMobileSidebarOpen(false)}
+					className="md:hidden fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs"
+				/>
+			)}
+
+			{/* Mobile Sidebar drawer */}
+			<aside
+				className={`fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-emerald-950 text-emerald-50 transition-transform duration-300 md:hidden ${
+					isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+				}`}
+			>
+				<div className="p-5 border-b border-emerald-900/20 flex justify-between items-center">
+					<div className="flex items-center gap-3">
+						<div className="p-1.5 bg-emerald-900 rounded-lg">
+							<ShoppingBag className="size-5 text-lime-300" />
 						</div>
-						<div className="mt-6 grid h-64 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
-							Analytics will appear here when orders are connected.
-						</div>
+						<span className="font-playfair font-black text-white">Zamazor</span>
+					</div>
+					<button onClick={() => setIsMobileSidebarOpen(false)} className="text-emerald-300/80 hover:text-white">
+						<X className="size-5" />
+					</button>
+				</div>
+				<nav className="flex-1 px-3 py-4 space-y-1">
+					<button
+						onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+							activeTab === "overview" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
+						}`}
+					>
+						<BarChart3 className="size-4" />
+						Overview
+					</button>
+					<button
+						onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+							activeTab === "products" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
+						}`}
+					>
+						<Box className="size-4" />
+						Products
+					</button>
+					<button
+						onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
+						className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+							activeTab === "orders" ? "bg-emerald-900 text-lime-300" : "text-emerald-100/70 hover:bg-emerald-900/40"
+						}`}
+					>
+						<ClipboardList className="size-4" />
+						Orders
+					</button>
+				</nav>
+				<div className="p-4 border-t border-emerald-900/20 flex items-center justify-between bg-emerald-950/40">
+					<div className="min-w-0">
+						<p className="text-xs font-bold text-white truncate">{user?.fullName || "Administrator"}</p>
+						<p className="text-[10px] text-emerald-300/60 truncate">{user?.email || "admin@zamazor.com"}</p>
+					</div>
+					<button onClick={handleLogout} className="p-2 hover:bg-emerald-900 rounded-lg text-rose-400 cursor-pointer">
+						<LogOut className="size-4" />
+					</button>
+				</div>
+			</aside>
+
+			{/* Main Content Pane */}
+			<div className="flex-1 flex flex-col overflow-y-auto">
+				{/* Top Navbar */}
+				<header className="sticky top-0 z-30 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+					<div className="flex items-center gap-3">
+						<button
+							onClick={() => setIsMobileSidebarOpen(true)}
+							className="md:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl"
+						>
+							<Menu className="size-5" />
+						</button>
+						<h1 className="text-lg font-bold text-slate-900 capitalize">
+							{activeTab} Management
+						</h1>
 					</div>
 
-					<div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-						<div className="flex items-center gap-3">
-							<ClipboardListIcon
-								className="size-5 text-slate-500"
-								aria-hidden="true"
-							/>
-							<h2 className="font-bold">Next setup steps</h2>
-						</div>
-						<ul className="mt-5 space-y-3 text-sm text-slate-600">
-							<li className="rounded-lg bg-slate-50 p-3">Connect product API</li>
-							<li className="rounded-lg bg-slate-50 p-3">Add order management</li>
-							<li className="rounded-lg bg-slate-50 p-3">Add customer list</li>
-						</ul>
+					<div className="flex items-center gap-3">
+						<Button
+							variant="outline"
+							onClick={() => navigate(APP_ROUTES.HOME)}
+							className="cursor-pointer rounded-xl h-10 px-4 text-xs font-bold border-emerald-900/10 hover:bg-slate-50"
+						>
+							<Home className="size-3.5 mr-1.5" />
+							Storefront
+						</Button>
+
+						{activeTab === "products" && (
+							<Button
+								onClick={openNewProductModal}
+								className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl h-10 px-4 text-xs cursor-pointer shadow-sm flex items-center gap-1.5"
+							>
+								<Plus className="size-4" />
+								New Product
+							</Button>
+						)}
 					</div>
-				</section>
+				</header>
+
+				{/* Tab content body */}
+				<main className="p-4 sm:p-6 lg:p-8 flex-1">
+					{loading ? (
+						<div className="flex items-center justify-center h-64">
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-900"></div>
+						</div>
+					) : (
+						<>
+							{/* TAB 1: OVERVIEW */}
+							{activeTab === "overview" && (
+								<div className="space-y-8 animate-in fade-in duration-200">
+									{/* Metric widgets */}
+									<div className="grid gap-4 sm:grid-cols-3">
+										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
+											<div>
+												<span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Revenue</span>
+												<h3 className="text-2xl font-black mt-1 text-slate-950">{totalSales.toFixed(2)} MAD</h3>
+											</div>
+											<div className="p-3 bg-emerald-50 rounded-2xl text-emerald-800">
+												<ShoppingCart className="size-6" />
+											</div>
+										</div>
+
+										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
+											<div>
+												<span className="text-xs font-black uppercase tracking-wider text-slate-400">All Products</span>
+												<h3 className="text-2xl font-black mt-1 text-slate-950">{products.length} Items</h3>
+											</div>
+											<div className="p-3 bg-lime-50 rounded-2xl text-emerald-900">
+												<Box className="size-6" />
+											</div>
+										</div>
+
+										<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md flex items-center justify-between">
+											<div>
+												<span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Orders</span>
+												<h3 className="text-2xl font-black mt-1 text-slate-950">{orders.length}</h3>
+											</div>
+											<div className="p-3 bg-teal-50 rounded-2xl text-teal-800">
+												<ClipboardList className="size-6" />
+											</div>
+										</div>
+									</div>
+
+									{/* Sales overview chart container */}
+									<div className="bg-white p-6 rounded-3xl border border-emerald-900/5 shadow-md">
+										<h3 className="font-playfair font-bold text-lg text-slate-950 mb-6">Recent Sales Dynamics</h3>
+										{orders.length === 0 ? (
+											<div className="h-64 border border-dashed border-slate-200 rounded-2xl bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+												No sales recorded. Create test orders to visualize data.
+											</div>
+										) : (
+											<div className="space-y-4">
+												<div className="flex items-end justify-between gap-2 h-48 pt-4">
+													{orders.slice(-7).map((order, idx) => {
+														const maxAmount = Math.max(...orders.map((o) => o.totalAmount)) || 1;
+														const heightPercentage = Math.max(10, (order.totalAmount / maxAmount) * 100);
+														return (
+															<div key={order.id} className="flex-1 flex flex-col items-center gap-2 group">
+																<div className="text-[10px] font-bold text-slate-950 opacity-0 group-hover:opacity-100 transition-opacity">
+																	{order.totalAmount.toFixed(0)} MAD
+																</div>
+																<div
+																	className="w-full bg-emerald-900 group-hover:bg-emerald-950 rounded-lg transition-all duration-200"
+																	style={{ height: `${heightPercentage}%` }}
+																/>
+																<span className="text-[10px] font-mono text-slate-400 truncate w-full text-center">
+																	{order.orderNumber}
+																</span>
+															</div>
+														);
+													})}
+												</div>
+												<div className="border-t border-slate-100 pt-4 text-center">
+													<p className="text-xs text-slate-500">Displaying revenue for the last 7 orders placed.</p>
+												</div>
+											</div>
+										)}
+									</div>
+								</div>
+							)}
+
+							{/* TAB 2: PRODUCTS */}
+							{activeTab === "products" && (
+								<div className="bg-white rounded-3xl border border-emerald-900/5 shadow-md overflow-hidden animate-in fade-in duration-200">
+									<div className="overflow-x-auto">
+										<table className="w-full text-left text-sm border-collapse">
+											<thead>
+												<tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400 bg-slate-50/50">
+													<th className="px-6 py-4">Product</th>
+													<th className="px-6 py-4">Category</th>
+													<th className="px-6 py-4">Price</th>
+													<th className="px-6 py-4 text-right">Actions</th>
+												</tr>
+											</thead>
+											<tbody className="divide-y divide-slate-100">
+												{products.length === 0 ? (
+													<tr>
+														<td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+															No products found. Click "New Product" to add.
+														</td>
+													</tr>
+												) : (
+													products.map((product) => (
+														<tr key={product.id} className="hover:bg-slate-50/40">
+															<td className="px-6 py-4">
+																<div className="flex items-center gap-3">
+																	<div className="size-12 shrink-0 bg-slate-100 rounded-xl p-1 flex items-center justify-center border border-slate-200/50">
+																		<img src={product.image} alt={product.name} className="h-full object-contain" />
+																	</div>
+																	<div>
+																		<p className="font-bold text-slate-900 text-sm leading-tight">{product.name}</p>
+																		<p className="text-[10px] text-slate-400 mt-1 max-w-[200px] truncate">{product.flavor}</p>
+																	</div>
+																</div>
+															</td>
+															<td className="px-6 py-4">
+																<span className="text-xs font-black uppercase bg-emerald-50 border border-emerald-900/5 text-emerald-800 px-2.5 py-0.5 rounded-full inline-block">
+																	{product.category}
+																</span>
+															</td>
+															<td className="px-6 py-4 font-black text-slate-900">
+																{product.price}
+															</td>
+															<td className="px-6 py-4 text-right">
+																<div className="flex items-center justify-end gap-2">
+																	<button
+																		onClick={() => openEditProductModal(product)}
+																		className="p-1.5 hover:bg-emerald-50 hover:text-emerald-950 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																		title="Edit Product"
+																	>
+																		<Edit className="size-4" />
+																	</button>
+																	<button
+																		onClick={() => handleDeleteProduct(product.id)}
+																		className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																		title="Delete Product"
+																	>
+																		<Trash2 className="size-4" />
+																	</button>
+																</div>
+															</td>
+														</tr>
+													))
+												)}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							)}
+
+							{/* TAB 3: ORDERS */}
+							{activeTab === "orders" && (
+								<div className="bg-white rounded-3xl border border-emerald-900/5 shadow-md overflow-hidden animate-in fade-in duration-200">
+									<div className="overflow-x-auto">
+										<table className="w-full text-left text-sm border-collapse">
+											<thead>
+												<tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400 bg-slate-50/50">
+													<th className="px-6 py-4">Order Number</th>
+													<th className="px-6 py-4">Date</th>
+													<th className="px-6 py-4">Total Amount</th>
+													<th className="px-6 py-4">Status</th>
+													<th className="px-6 py-4 text-right">Actions</th>
+												</tr>
+											</thead>
+											<tbody className="divide-y divide-slate-100">
+												{orders.length === 0 ? (
+													<tr>
+														<td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+															No orders found.
+														</td>
+													</tr>
+												) : (
+													orders.map((order) => (
+														<tr key={order.id} className="hover:bg-slate-50/40">
+															<td className="px-6 py-4 font-mono font-bold text-slate-900">
+																{order.orderNumber}
+															</td>
+															<td className="px-6 py-4 text-slate-500">
+																{new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+															</td>
+															<td className="px-6 py-4 font-black text-slate-950">
+																{order.totalAmount.toFixed(2)} MAD
+															</td>
+															<td className="px-6 py-4">
+																<span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+																	order.status === "PENDING"
+																		? "bg-amber-50 text-amber-800 border border-amber-200/50"
+																		: order.status === "COMPLETED" || order.status === "PAID"
+																		? "bg-emerald-50 text-emerald-800 border border-emerald-200/50"
+																		: "bg-slate-100 text-slate-500 border border-slate-200"
+																}`}>
+																	{order.status}
+																</span>
+															</td>
+															<td className="px-6 py-4 text-right">
+																<div className="flex items-center justify-end gap-2">
+																	<button
+																		onClick={() => setSelectedOrder(order)}
+																		className="p-1.5 hover:bg-emerald-50 hover:text-emerald-950 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																		title="View Details"
+																	>
+																		<Eye className="size-4" />
+																	</button>
+																	{order.status !== "CANCELLED" && (
+																		<button
+																			onClick={() => handleCancelOrder(order.id)}
+																			className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-400 transition-colors cursor-pointer"
+																			title="Cancel Order"
+																		>
+																			<X className="size-4" />
+																		</button>
+																	)}
+																</div>
+															</td>
+														</tr>
+													))
+												)}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							)}
+						</>
+					)}
+				</main>
 			</div>
-		</main>
+
+			{/* MODAL: CREATE OR UPDATE PRODUCT */}
+			{isProductModalOpen && (
+				<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs">
+					<div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+						<button
+							onClick={() => setIsProductModalOpen(false)}
+							className="absolute top-4 right-4 size-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+						>
+							<X className="size-4" />
+						</button>
+
+						<h3 className="font-playfair text-2xl font-bold text-slate-950 mb-6">
+							{editingProduct ? "Edit Product" : "New Supplement Product"}
+						</h3>
+
+						<form onSubmit={handleProductSubmit} className="space-y-4">
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-1.5">
+									<label className="text-xs font-bold text-slate-600">Product Name *</label>
+									<Input
+										value={prodName}
+										onChange={(e) => setProdName(e.target.value)}
+										placeholder="e.g. Organic Greens Powder"
+										required
+										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-bold text-slate-600">Category *</label>
+									<select
+										value={prodCategory}
+										onChange={(e) => setProdCategory(e.target.value)}
+										required
+										className="flex h-10 w-full rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800"
+									>
+										{categories.map((cat) => (
+											<option key={cat.id} value={cat.id}>
+												{cat.label}
+											</option>
+										))}
+									</select>
+								</div>
+							</div>
+
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-1.5">
+									<label className="text-xs font-bold text-slate-600">Price (MAD) *</label>
+									<Input
+										type="number"
+										step="0.01"
+										value={prodPrice}
+										onChange={(e) => setProdPrice(e.target.value)}
+										placeholder="e.g. 29.99"
+										required
+										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-bold text-slate-600">Stock Quantity</label>
+									<Input
+										type="number"
+										value={prodStock}
+										onChange={(e) => setProdStock(e.target.value)}
+										placeholder="e.g. 100"
+										className="rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800"
+									/>
+								</div>
+							</div>
+
+							<div className="space-y-1.5">
+								<label className="text-xs font-bold text-slate-600">Description / Flavor Details</label>
+								<textarea
+									value={prodDesc}
+									onChange={(e) => setProdDesc(e.target.value)}
+									placeholder="Describe the product formula, flavor profiles, and wellness benefits..."
+									rows={3}
+									className="flex min-h-[80px] w-full rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800"
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<label className="text-xs font-bold text-slate-600">Product Thumbnail</label>
+								{prodImagePreview && (
+									<div className="size-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-1 mb-2">
+										<img src={prodImagePreview} alt="Preview" className="h-full w-full object-contain" />
+									</div>
+								)}
+								<input
+									type="file"
+									accept="image/*"
+									onChange={(e) => {
+										const file = e.target.files?.[0];
+										if (file) {
+											setProdImage(file);
+											setProdImagePreview(URL.createObjectURL(file));
+										}
+									}}
+									className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+								/>
+							</div>
+
+							<div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => setIsProductModalOpen(false)}
+									className="rounded-xl cursor-pointer"
+								>
+									Cancel
+								</Button>
+								<Button
+									type="submit"
+									disabled={prodSubmitting}
+									className="bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl font-bold cursor-pointer"
+								>
+									{prodSubmitting ? "Saving..." : "Save Product"}
+								</Button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{/* MODAL: ORDER DETAILS */}
+			{selectedOrder && (
+				<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs">
+					<div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+						<button
+							onClick={() => setSelectedOrder(null)}
+							className="absolute top-4 right-4 size-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+						>
+							<X className="size-4" />
+						</button>
+
+						<div className="flex flex-wrap items-baseline gap-3 mb-6">
+							<h3 className="font-playfair text-2xl font-bold text-slate-950">
+								Order {selectedOrder.orderNumber}
+							</h3>
+							<span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+								selectedOrder.status === "PENDING"
+									? "bg-amber-50 text-amber-800 border border-amber-200/50"
+									: selectedOrder.status === "COMPLETED" || selectedOrder.status === "PAID"
+									? "bg-emerald-50 text-emerald-800 border border-emerald-200/50"
+									: "bg-slate-100 text-slate-500 border border-slate-200"
+							}`}>
+								{selectedOrder.status}
+							</span>
+						</div>
+
+						<div className="grid gap-6 sm:grid-cols-2 text-sm mb-6 border-b border-slate-100 pb-5">
+							<div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">Shipping Details</span>
+								<p className="font-bold text-slate-900 leading-relaxed whitespace-pre-line">{selectedOrder.shippingAddress}</p>
+							</div>
+							<div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">Order Date & Metadata</span>
+								<p className="text-slate-800">
+									Date: <strong className="text-slate-950 font-sans">{new Date(selectedOrder.createdAt).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}</strong>
+								</p>
+								<p className="text-slate-800 mt-1">
+									Total Amount: <strong className="text-slate-950 font-sans">{selectedOrder.totalAmount.toFixed(2)} MAD</strong>
+								</p>
+							</div>
+						</div>
+
+						<div className="space-y-4">
+							<span className="text-xs font-black uppercase tracking-wider text-slate-400 block">Ordered Stacks</span>
+							<div className="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden bg-slate-50/30">
+								{selectedOrder.items.map((item) => (
+									<div key={item.id} className="flex justify-between items-center p-4 text-sm">
+										<div className="flex items-center gap-2">
+											<Folder className="size-4 text-emerald-800/60" />
+											<span className="font-bold text-slate-900">{item.productName}</span>
+											<span className="text-xs text-slate-400 font-bold">x{item.quantity}</span>
+										</div>
+										<span className="font-black text-slate-950">{(item.price * item.quantity).toFixed(2)} MAD</span>
+									</div>
+								))}
+							</div>
+						</div>
+
+						<div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-8">
+							{selectedOrder.status !== "CANCELLED" && (
+								<Button
+									variant="outline"
+									onClick={() => handleCancelOrder(selectedOrder.id)}
+									className="border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer font-semibold flex items-center gap-1.5"
+								>
+									<AlertTriangle className="size-4" />
+									Cancel Order
+								</Button>
+							)}
+							<Button
+								onClick={() => setSelectedOrder(null)}
+								className="bg-slate-900 hover:bg-slate-950 text-white rounded-xl font-bold cursor-pointer"
+							>
+								Close
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
 	);
 };
