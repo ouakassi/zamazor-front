@@ -598,11 +598,40 @@ export const DashboardPage = () => {
 											)}
 										</div>
 
-										<div className="text-xs text-slate-500 font-bold font-sans text-right shrink-0 whitespace-nowrap">
-											{filteredProducts.length === 0 
-												? "No items match criteria" 
-												: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, filteredProducts.length)} of ${filteredProducts.length} items`
-											}
+										<div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0 self-end md:self-auto select-none">
+											<div className="text-xs text-slate-500 font-bold font-sans">
+												{filteredProducts.length === 0 
+													? "No items match criteria" 
+													: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, filteredProducts.length)} of ${filteredProducts.length} items`
+												}
+											</div>
+											{totalProductPages > 1 && (
+												<div className="flex items-center gap-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50/50">
+													<Button
+														variant="outline"
+														size="icon"
+														disabled={productPage === 1}
+														onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+														className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center active:scale-95 transition-all"
+														title="Previous Page"
+													>
+														&larr;
+													</Button>
+													<span className="text-[10px] font-bold text-slate-500 px-1.5 min-w-[55px] text-center">
+														{productPage} / {totalProductPages}
+													</span>
+													<Button
+														variant="outline"
+														size="icon"
+														disabled={productPage === totalProductPages}
+														onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+														className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs flex items-center justify-center active:scale-95 transition-all"
+														title="Next Page"
+													>
+														&rarr;
+													</Button>
+												</div>
+											)}
 										</div>
 									</div>
 
