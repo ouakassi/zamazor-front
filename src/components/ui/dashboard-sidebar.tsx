@@ -5,9 +5,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
-  Inbox,
-  Settings,
-  X
+  Inbox
 } from 'lucide-react';
 
 export type NavItemData = {
@@ -50,29 +48,29 @@ function WorkspaceSwitcher({ selected, onSelect }: { selected?: string, onSelect
     <div className="relative">
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between px-2 py-2 mb-4 rounded-lg hover:bg-emerald-900/40 cursor-pointer transition-colors select-none group"
+        className="flex items-center justify-between px-2.5 py-2 mb-4 rounded-xl hover:bg-slate-100 cursor-pointer transition-all duration-200 select-none group active:scale-[0.98] border border-slate-100/50"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[6px] bg-emerald-900 text-lime-300 flex items-center justify-center font-semibold text-[13px] shadow-sm border border-emerald-800">
+          <div className="w-8 h-8 rounded-lg bg-emerald-900 text-white flex items-center justify-center font-bold text-[13px] shadow-sm">
             {current.charAt(0)}
           </div>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-[13px] font-medium leading-none mb-1 text-white truncate max-w-[120px]">{current}</span>
-            <span className="text-[11px] text-emerald-300/60 leading-none">Admin Desk</span>
+            <span className="text-[13px] font-bold leading-none mb-1 text-slate-900 truncate max-w-[120px]">{current}</span>
+            <span className="text-[10px] text-slate-500 leading-none font-medium">Admin Desk</span>
           </div>
         </div>
-        <ChevronDown className="w-4 h-4 text-emerald-300/40 group-hover:text-emerald-100 transition-colors shrink-0" strokeWidth={1.5} />
+        <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" strokeWidth={1.5} />
       </div>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-[52px] left-0 w-full bg-emerald-950 border border-emerald-900/40 rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute top-[52px] left-0 w-full bg-white border border-slate-200/80 rounded-xl shadow-xl z-50 py-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
             {['Zamazor Store', 'Sandbox Lab'].map(ws => (
               <div 
                 key={ws}
                 onClick={() => { handleSelect(ws); setIsOpen(false); }}
-                className={`px-3 py-2 mx-1 text-[13px] rounded-md cursor-pointer transition-colors ${current === ws ? 'bg-emerald-900 text-lime-300 font-medium' : 'text-emerald-100/80 hover:bg-emerald-900/40'}`}
+                className={`px-3 py-2 mx-1.5 text-[13px] rounded-lg cursor-pointer transition-colors ${current === ws ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
               >
                 {ws}
               </div>
@@ -96,6 +94,7 @@ function NavItem({
   level?: number;
 }) {
   const isActive = activeId === item.id;
+  const isLogout = item.id === 'logout';
   const hasChildren = !!item.children;
   const [isOpen, setIsOpen] = useState(false);
 
@@ -110,21 +109,28 @@ function NavItem({
   return (
     <div className="flex flex-col w-full">
       <div 
-        className={`group flex items-center justify-between px-2.5 py-[7px] rounded-[6px] cursor-pointer transition-all duration-200 select-none
+        className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 select-none active:scale-[0.99]
           ${isActive 
-            ? 'bg-emerald-900 text-lime-300 font-bold border-l-4 border-lime-300 pl-2' 
-            : 'text-emerald-100/70 hover:bg-emerald-900/40 hover:text-white'
+            ? 'bg-slate-100 text-slate-900 font-bold shadow-xs' 
+            : isLogout
+              ? 'text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+              : 'text-slate-600 hover:bg-slate-100/60 hover:text-slate-900'
           }
         `}
-        style={{ paddingLeft: `${level * 12 + (isActive ? 8 : 10)}px` }}
+        style={{ paddingLeft: `${level * 12 + 12}px` }}
         onClick={handleClick}
       >
         <div className="flex items-center gap-2.5">
           <item.icon 
-            className={`w-[16px] h-[16px] transition-colors
-              ${isActive ? 'text-lime-300' : 'text-emerald-300/60 group-hover:text-white'}
+            className={`w-[16px] h-[16px] transition-colors duration-200
+              ${isActive 
+                ? 'text-emerald-800' 
+                : isLogout
+                  ? 'text-slate-400 group-hover:text-rose-500'
+                  : 'text-slate-400 group-hover:text-slate-600'
+              }
             `} 
-            strokeWidth={1.5} 
+            strokeWidth={1.75} 
           />
           <span className="text-[13px] tracking-wide truncate">
             {item.title}
@@ -133,18 +139,18 @@ function NavItem({
         
         <div className="flex items-center gap-2">
           {item.shortcut && (
-             <kbd className="hidden group-hover:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-medium font-mono text-emerald-300/40 bg-emerald-950 border border-emerald-900/40 rounded-[4px] shadow-xs">
+             <kbd className="hidden group-hover:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-medium font-mono text-slate-400 bg-slate-50 border border-slate-200 rounded-[4px] shadow-xs">
                {item.shortcut}
              </kbd>
           )}
           {item.badge && (
-            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-medium rounded-full bg-lime-300/10 text-lime-300">
+            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
               {item.badge}
             </span>
           )}
           {hasChildren && (
             <ChevronRight 
-              className={`w-3.5 h-3.5 text-emerald-300/40 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} 
+              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} 
               strokeWidth={2}
             />
           )}
@@ -159,8 +165,8 @@ function NavItem({
         >
           <div className="overflow-hidden min-h-0 relative flex flex-col gap-0.5 mt-0.5">
             <div 
-              className="absolute top-0 bottom-0 border-l border-emerald-900/40"
-              style={{ left: `${level * 12 + 17.5}px` }}
+              className="absolute top-0 bottom-0 border-l border-slate-200"
+              style={{ left: `${level * 12 + 19.5}px` }}
             />
             {item.children!.map(child => (
               <NavItem 
@@ -196,14 +202,14 @@ export function SidebarNav({
   const handleSelect = onSelect || setInternalId;
 
   return (
-    <div className={`flex flex-col w-[260px] h-full bg-emerald-950 text-emerald-50 border-r border-emerald-900/20 p-3 font-sans ${className}`}>
+    <div className={`flex flex-col w-[260px] h-full bg-white text-slate-800 border-r border-slate-200/85 p-4 font-sans ${className}`}>
       <WorkspaceSwitcher selected={activeWorkspace} onSelect={onWorkspaceSelect} />
 
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col gap-4 mt-2">
         {mockNavGroups.map((group, idx) => (
           <div key={idx} className="flex flex-col gap-0.5">
             {group.heading && (
-              <span className="px-2.5 mb-1 text-[11px] font-semibold tracking-wider text-emerald-300/40 uppercase">
+              <span className="px-3 mb-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
                 {group.heading}
               </span>
             )}
@@ -219,7 +225,7 @@ export function SidebarNav({
         ))}
       </div>
 
-      <div className="mt-auto pt-4 border-t border-emerald-900/20 flex flex-col gap-0.5">
+      <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-0.5">
         {mockBottomItems.map(item => (
           <NavItem 
             key={item.id} 
