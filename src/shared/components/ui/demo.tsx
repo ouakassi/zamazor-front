@@ -41,7 +41,7 @@ export function FAQDemoPage() {
     {
       question: "How long does shipping take?",
       answer:
-        "Standard shipping takes 3-5 business days. Express options are available at checkout. All orders over $50 qualify for free standard shipping.",
+        "Standard shipping takes 3-5 business days. Express options are available at checkout. All orders qualify for free standard shipping.",
     },
     {
       question: "Can I pause or edit my subscription?",

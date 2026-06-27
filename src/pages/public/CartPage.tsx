@@ -25,9 +25,8 @@ export const CartPage = () => {
 	useDocumentTitle("Shopping Cart | Zamazor");
 
 	// Calculations
-	const shippingThreshold = 50;
-	const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 4.99;
-	const orderTotal = subtotal + shippingCost;
+	const shippingCost = 0;
+	const orderTotal = subtotal;
 
 
 

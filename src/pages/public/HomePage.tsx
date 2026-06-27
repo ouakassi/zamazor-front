@@ -1563,7 +1563,7 @@ export const HomePage = () => {
 						},
 						{
 							question: "What is your shipping policy?",
-							answer: "We offer free standard shipping (3-5 business days) on all orders over $50. For smaller orders, shipping is a flat rate of $4.99. Express shipping is also available at checkout.",
+							answer: "We offer free standard shipping (3-5 business days) on all orders. No minimum purchase required.",
 						},
 						{
 							question: "Do you offer a satisfaction guarantee?",

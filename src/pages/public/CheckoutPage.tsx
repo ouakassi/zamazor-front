@@ -92,9 +92,8 @@ export const CheckoutPage = () => {
 
 	// Calculations
 	const discountAmount = subtotal * (discountPercentage / 100);
-	const shippingThreshold = 50;
-	const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 4.99;
-	const orderTotal = subtotal - discountAmount + shippingCost;
+	const shippingCost = 0;
+	const orderTotal = subtotal - discountAmount;
 
 	const handleCheckoutSubmit = async (data: CheckoutFormValues) => {
 		setIsSubmitting(true);
