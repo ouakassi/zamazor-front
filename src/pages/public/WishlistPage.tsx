@@ -9,9 +9,14 @@ import { OriginButton } from "@/shared/components/ui/origin-button";
 import { toast } from "sonner";
 import { Heart, ShoppingBag, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { type MouseEvent } from "react";
+
+import { useLanguage } from "@/shared/context/LanguageContext";
+import type { Product } from "@/core/config/productsData";
 
 export const WishlistPage = () => {
-	useDocumentTitle(`My Wishlist | ${CONFIG.APP_NAME}`);
+	const { language, t } = useLanguage();
+	useDocumentTitle(`${language === "fr" ? "Mes Favoris" : "My Wishlist"} | ${CONFIG.APP_NAME}`);
 	const navigate = useNavigate();
 
 	const bookmarks = useBookmarkStore((state) => state.bookmarks);
@@ -19,16 +24,16 @@ export const WishlistPage = () => {
 	const clearBookmarks = useBookmarkStore((state) => state.clearBookmarks);
 	const addToCart = useCartStore((state) => state.addItem);
 
-	const handleAddToCart = (product: any, e: React.MouseEvent) => {
+	const handleAddToCart = (product: Product, e: MouseEvent) => {
 		e.stopPropagation();
 		addToCart(product);
-		toast.success(`${product.name} added to cart!`);
+		toast.success(language === "fr" ? `${product.name} ajouté au panier !` : `${product.name} added to cart!`);
 	};
 
-	const handleRemove = (productId: string, productName: string, e: React.MouseEvent) => {
+	const handleRemove = (productId: string, productName: string, e: MouseEvent) => {
 		e.stopPropagation();
 		removeBookmark(productId);
-		toast.success(`${productName} removed from wishlist.`);
+		toast.success(language === "fr" ? `${productName} retiré des favoris.` : `${productName} removed from wishlist.`);
 	};
 
 	return (
@@ -42,13 +47,13 @@ export const WishlistPage = () => {
 							className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 mb-3"
 						>
 							<ArrowLeft className="size-3.5" />
-							Back to shopping
+							{language === "fr" ? "Retour aux achats" : "Back to shopping"}
 						</Link>
 						<h1 className="text-3xl sm:text-4xl font-playfair font-normal text-slate-950">
-							My Wishlist
+							{language === "fr" ? "Mes Favoris" : "My Wishlist"}
 						</h1>
 						<p className="text-sm text-slate-500 mt-1">
-							Save and manage your favorite wellness formulas.
+							{language === "fr" ? "Enregistrez et gérez vos formules bien-être préférées." : "Save and manage your favorite wellness formulas."}
 						</p>
 					</div>
 
@@ -57,12 +62,12 @@ export const WishlistPage = () => {
 							variant="ghost"
 							onClick={() => {
 								clearBookmarks();
-								toast.success("Wishlist cleared.");
+								toast.success(language === "fr" ? "Favoris effacés." : "Wishlist cleared.");
 							}}
 							className="h-10 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl cursor-pointer"
 						>
 							<Trash2 className="size-4 mr-1.5" />
-							Clear All
+							{language === "fr" ? "Tout Effacer" : "Clear All"}
 						</Button>
 					)}
 				</div>
@@ -73,13 +78,13 @@ export const WishlistPage = () => {
 						<span className="grid size-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-900/30 mx-auto mb-5">
 							<Heart className="size-8" />
 						</span>
-						<h3 className="text-xl font-playfair text-slate-950">Your wishlist is empty</h3>
+						<h3 className="text-xl font-playfair text-slate-950">{language === "fr" ? "Votre liste de favoris est vide" : "Your wishlist is empty"}</h3>
 						<p className="mt-2 text-sm text-slate-500">
-							Explore our targeted supplement stacks and save your favorites here.
+							{language === "fr" ? "Explorez nos compléments ciblés et enregistrez vos favoris ici." : "Explore our targeted supplement stacks and save your favorites here."}
 						</p>
 						<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl h-11 px-5">
 							<Link to={APP_ROUTES.SHOP}>
-								Browse Formulas
+								{language === "fr" ? "Parcurir les Formules" : "Browse Formulas"}
 								<ArrowRight className="size-4 ml-1.5" />
 							</Link>
 						</Button>
@@ -135,7 +140,7 @@ export const WishlistPage = () => {
 									className="mt-5 w-full h-10 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
 								>
 									<ShoppingBag className="size-3.5" />
-									Add to cart
+									{t("common.addToCart")}
 								</OriginButton>
 							</motion.article>
 						))}

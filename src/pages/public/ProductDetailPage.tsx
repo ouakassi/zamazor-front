@@ -22,11 +22,13 @@ import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { toast } from "sonner";
 import { type Product } from "@/core/config/productsData";
+import { useLanguage } from "@/shared/context/LanguageContext";
 
 
 export const ProductDetailPage = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
+	const { language, t } = useLanguage();
 	const addItem = useCartStore((state) => state.addItem);
 	const [activeTab, setActiveTab] = useState<"usage" | "ingredients" | "science">("usage");
 	const [quantity, setQuantity] = useState(1);
@@ -127,14 +129,14 @@ export const ProductDetailPage = () => {
 								onClick={() => {
 									if (isBookmarked(product.id)) {
 										removeBookmark(product.id);
-										toast.success(`Removed ${product.name} from wishlist.`);
+										toast.success(language === "fr" ? `${product.name} retiré des favoris.` : `Removed ${product.name} from wishlist.`);
 									} else {
 										addBookmark(product);
-										toast.success(`Added ${product.name} to wishlist!`);
+										toast.success(language === "fr" ? `${product.name} ajouté aux favoris !` : `Added ${product.name} to wishlist!`);
 									}
 								}}
 								className="absolute right-6 top-6 z-10 size-10 rounded-full bg-white flex items-center justify-center border border-emerald-950/5 shadow-xs hover:scale-105 transition-all text-slate-400 hover:text-rose-500 cursor-pointer"
-								title={isBookmarked(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+								title={isBookmarked(product.id) ? (language === "fr" ? "Retirer des favoris" : "Remove from Wishlist") : (language === "fr" ? "Ajouter aux favoris" : "Add to Wishlist")}
 							>
 								<HeartIcon className={cn("size-5 transition-colors", isBookmarked(product.id) ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
 							</button>
@@ -150,18 +152,18 @@ export const ProductDetailPage = () => {
 						<div className="grid grid-cols-3 gap-3">
 							<div className="rounded-2xl border border-emerald-900/5 bg-white p-4 text-center shadow-xs">
 								<ShieldCheckIcon className="size-5 text-emerald-700 mx-auto" />
-								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">3rd Party Tested</p>
-								<p className="text-[10px] text-slate-500 mt-0.5">Lab verified purity</p>
+								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">{language === "fr" ? "Testé par Tiers" : "3rd Party Tested"}</p>
+								<p className="text-[10px] text-slate-500 mt-0.5">{language === "fr" ? "Pureté vérifiée en labo" : "Lab verified purity"}</p>
 							</div>
 							<div className="rounded-2xl border border-emerald-900/5 bg-white p-4 text-center shadow-xs">
 								<LeafIcon className="size-5 text-emerald-700 mx-auto" />
-								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">100% Clean</p>
-								<p className="text-[10px] text-slate-500 mt-0.5">No artificial colors</p>
+								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">{language === "fr" ? "100% Propre" : "100% Clean"}</p>
+								<p className="text-[10px] text-slate-500 mt-0.5">{language === "fr" ? "Sans colorants artificiels" : "No artificial colors"}</p>
 							</div>
 							<div className="rounded-2xl border border-emerald-900/5 bg-white p-4 text-center shadow-xs">
 								<SparklesIcon className="size-5 text-emerald-700 mx-auto" />
-								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">Optimal Dose</p>
-								<p className="text-[10px] text-slate-500 mt-0.5">High bioavailability</p>
+								<p className="mt-2 text-xs font-extrabold text-slate-900 uppercase tracking-wide">{language === "fr" ? "Dose Optimale" : "Optimal Dose"}</p>
+								<p className="text-[10px] text-slate-500 mt-0.5">{language === "fr" ? "Haute biodisponibilité" : "High bioavailability"}</p>
 							</div>
 						</div>
 					</div>
@@ -181,17 +183,17 @@ export const ProductDetailPage = () => {
 										<StarIcon key={i} className="size-4 fill-current" />
 									))}
 								</div>
-								<span className="text-xs font-bold text-slate-500">4.9 (184 reviews)</span>
+								<span className="text-xs font-bold text-slate-500">4.9 (184 {language === "fr" ? "avis" : "reviews"})</span>
 							</div>
 
 							<div className="mt-6 flex items-baseline gap-4">
 								<span className="text-3xl font-black text-slate-950">{product.price}</span>
-								<span className="text-sm font-semibold text-slate-500">Free shipping included</span>
+								<span className="text-sm font-semibold text-slate-500">{language === "fr" ? "Livraison gratuite incluse" : "Free shipping included"}</span>
 							</div>
 
 							{/* Flavor pill */}
 							<div className="mt-6">
-								<span className="text-xs font-black text-slate-400 uppercase tracking-wider block">Flavor</span>
+								<span className="text-xs font-black text-slate-400 uppercase tracking-wider block">{language === "fr" ? "Saveur" : "Flavor"}</span>
 								<span className="inline-block mt-2 text-xs font-bold px-4 py-2 bg-emerald-50 text-emerald-900 border border-emerald-900/10 rounded-full">
 									{product.flavor}
 								</span>
@@ -205,15 +207,15 @@ export const ProductDetailPage = () => {
 							<div className="mt-8 rounded-2xl bg-[#f0f7ec] border border-emerald-900/10 p-5 flex items-start gap-4">
 								<CompassIcon className="size-6 text-emerald-800 mt-0.5 shrink-0" />
 								<div>
-									<h4 className="text-sm font-bold text-emerald-950 font-sans">Optimal Daily Window</h4>
+									<h4 className="text-sm font-bold text-emerald-950 font-sans">{language === "fr" ? "Fenêtre Journalière Optimale" : "Optimal Daily Window"}</h4>
 									<p className="text-xs text-slate-600 mt-1 font-sans leading-relaxed">
 										{product.category === "Recovery" 
-											? "Consuming Night Repair 30-45 minutes before bedtime encourages deeper recovery and resets muscle tissue cell growth overnight." 
+											? (language === "fr" ? "Consommer Night Repair 30-45 minutes avant le coucher favorise une récupération plus profonde et régénère les tissus musculaires pendant la nuit." : "Consuming Night Repair 30-45 minutes before bedtime encourages deeper recovery and resets muscle tissue cell growth overnight.") 
 											: product.category === "Protein"
-											? "Take within 45 minutes of training to build muscle fibers, or use as a mid-day meal supplement to boost metabolic energy."
+											? (language === "fr" ? "Prendre dans les 45 minutes suivant l'entraînement pour réparer les fibres musculaires, ou l'utiliser comme collation pour stimuler l'énergie métabolique." : "Take within 45 minutes of training to build muscle fibers, or use as a mid-day meal supplement to boost metabolic energy.")
 											: product.category === "Greens"
-											? "Consume first thing in the morning on an empty stomach to enhance gut biome health and natural digestive enzyme pathways."
-											: "Sip throughout workout cycles or focus windows to maintain hydration, blood flow, and sustained mineral levels."}
+											? (language === "fr" ? "Consommer le matin à jeun pour améliorer la santé du microbiote intestinal et les voies enzymatiques digestives naturelles." : "Consume first thing in the morning on an empty stomach to enhance gut biome health and natural digestive enzyme pathways.")
+											: (language === "fr" ? "Siroter pendant les cycles d'entraînement ou les fenêtres de concentration pour maintenir l'hydratation, le flux sanguin et des niveaux minéraux constants." : "Sip throughout workout cycles or focus windows to maintain hydration, blood flow, and sustained mineral levels.")}
 									</p>
 								</div>
 							</div>
@@ -244,13 +246,13 @@ export const ProductDetailPage = () => {
 										onClick={() => {
 											if (product) {
 												addItem(product, quantity);
-												toast.success(`${quantity}x ${product.name} added to cart!`);
+												toast.success(language === "fr" ? `${quantity}x ${product.name} ajouté au panier !` : `${quantity}x ${product.name} added to cart!`);
 											}
 										}}
 										className="flex-1 h-12 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md"
 									>
 										<ShoppingBagIcon className="size-4" />
-										Add to cart &bull; {product ? `$${(parseFloat(product.price.replace("$", "")) * quantity).toFixed(2)}` : ""}
+										{t("common.addToCart")} &bull; {product && typeof product.price === "string" ? `${(parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)} MAD` : ""}
 									</OriginButton>
 
 									{product && (
@@ -260,14 +262,14 @@ export const ProductDetailPage = () => {
 											onClick={() => {
 												if (isBookmarked(product.id)) {
 													removeBookmark(product.id);
-													toast.success(`Removed ${product.name} from wishlist.`);
+													toast.success(language === "fr" ? `${product.name} retiré des favoris.` : `Removed ${product.name} from wishlist.`);
 												} else {
 													addBookmark(product);
-													toast.success(`Added ${product.name} to wishlist!`);
+													toast.success(language === "fr" ? `${product.name} ajouté aux favoris !` : `Added ${product.name} to wishlist!`);
 												}
 											}}
 											className="size-12 rounded-xl border-emerald-900/10 text-slate-700 hover:bg-rose-50/50 hover:text-rose-600 hover:border-rose-100 flex items-center justify-center cursor-pointer transition-colors shadow-sm"
-											title={isBookmarked(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+											title={isBookmarked(product.id) ? (language === "fr" ? "Retirer des favoris" : "Remove from Wishlist") : (language === "fr" ? "Ajouter aux favoris" : "Add to Wishlist")}
 										>
 											<HeartIcon className={cn("size-5 transition-colors", isBookmarked(product.id) ? "fill-rose-500 text-rose-500" : "text-slate-500")} />
 										</Button>
@@ -277,7 +279,7 @@ export const ProductDetailPage = () => {
 
 							{/* Key Benefits */}
 							<div className="mt-8">
-								<h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Benefits</h3>
+								<h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">{t("shop.benefits")}</h3>
 								<ul className="mt-3 space-y-2.5">
 									{product.benefits?.map((benefit) => (
 										<li key={benefit} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-600 font-sans leading-relaxed">
@@ -305,7 +307,7 @@ export const ProductDetailPage = () => {
 												: "border-transparent text-slate-400 hover:text-slate-600"
 										)}
 									>
-										{tab === "usage" ? "How to use" : tab === "ingredients" ? "Ingredients" : "Evidence"}
+										{tab === "usage" ? (language === "fr" ? "Conseils d'utilisation" : "How to use") : tab === "ingredients" ? (language === "fr" ? "Ingrédients" : "Ingredients") : (language === "fr" ? "Preuve Scientifique" : "Evidence")}
 									</button>
 								))}
 							</div>
@@ -314,13 +316,19 @@ export const ProductDetailPage = () => {
 								{activeTab === "usage" && (
 									<div className="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3">
 										<p>{product.usage}</p>
-										<p><strong>Note:</strong> We recommend starting consistency with 1 dose daily. Best mixed with cold liquid, as hot liquids can degrade active probiotic cultures or vitamins.</p>
+										<p>
+											{language === "fr" ? (
+												<><strong>Note:</strong> Nous vous recommandons de commencer par 1 dose par jour. Idéalement mélangé à un liquide froid, car les liquides chauds peuvent dégrader les cultures de probiotiques ou les vitamines actives.</>
+											) : (
+												<><strong>Note:</strong> We recommend starting consistency with 1 dose daily. Best mixed with cold liquid, as hot liquids can degrade active probiotic cultures or vitamins.</>
+											)}
+										</p>
 									</div>
 								)}
 
 								{activeTab === "ingredients" && (
 									<div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-										<p className="font-bold mb-3 text-slate-900">Active ingredients in each dose:</p>
+										<p className="font-bold mb-3 text-slate-900">{language === "fr" ? "Ingrédients actifs dans chaque dose :" : "Active ingredients in each dose:"}</p>
 										<div className="flex flex-wrap gap-2">
 											{product.ingredients?.map((ing) => (
 												<span key={ing} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">
@@ -328,16 +336,20 @@ export const ProductDetailPage = () => {
 												</span>
 											))}
 										</div>
-										<p className="mt-4 text-[11px] text-slate-400 leading-snug">All Zamazor supplement formulations are free from magnesium stearate, gluten, GMOs, soy, and dairy. Full transparent batch sheets are accessible via the QR code printed on the bottom canister.</p>
+										<p className="mt-4 text-[11px] text-slate-400 leading-snug">
+											{language === "fr" ? "Toutes les formulations de compléments Zamazor sont sans stéarate de magnésium, sans gluten, sans OGM, sans soja ni produits laitiers. Les fiches de lots transparentes sont accessibles via le code QR imprimé au fond du flacon." : "All Zamazor supplement formulations are free from magnesium stearate, gluten, GMOs, soy, and dairy. Full transparent batch sheets are accessible via the QR code printed on the bottom canister."}
+										</p>
 									</div>
 								)}
 
 								{activeTab === "science" && (
 									<div className="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-2">
-										<p>Every active component in this product is included in clinical, science-backed dosages rather than generic micro-doses. Our formulations are validated by sports scientists and certified chemists.</p>
+										<p>
+											{language === "fr" ? "Chaque composant actif de ce produit est inclus dans des dosages cliniques et scientifiquement prouvés plutôt que dans des micro-doses génériques. Nos formulations sont validées par des scientifiques du sport et des chimistes certifiés." : "Every active component in this product is included in clinical, science-backed dosages rather than generic micro-doses. Our formulations are validated by sports scientists and certified chemists."}
+										</p>
 										<div className="flex items-center gap-2 mt-4 text-emerald-800 font-semibold text-xs">
 											<ShieldCheckIcon className="size-4" />
-											<span>Certified NSF & ISO-9001 quality facility</span>
+											<span>{language === "fr" ? "Établissement certifié de qualité NSF et ISO-9001" : "Certified NSF & ISO-9001 quality facility"}</span>
 										</div>
 									</div>
 								)}
@@ -349,10 +361,10 @@ export const ProductDetailPage = () => {
 				{/* Cross-Sell Recommendations */}
 				<section className="mt-20 border-t border-emerald-900/10 pt-16">
 					<div className="text-center mb-12">
-						<p className="text-xs font-black uppercase tracking-widest text-emerald-700">Perfect your stack</p>
-						<h2 className="mt-2 text-3xl font-playfair font-normal tracking-tight text-slate-950 sm:text-4xl">Complete your daily routine.</h2>
+						<p className="text-xs font-black uppercase tracking-widest text-emerald-700">{language === "fr" ? "Perfectionnez votre stack" : "Perfect your stack"}</p>
+						<h2 className="mt-2 text-3xl font-playfair font-normal tracking-tight text-slate-950 sm:text-4xl">{language === "fr" ? "Complétez votre routine quotidienne." : "Complete your daily routine."}</h2>
 						<p className="mt-3 max-w-xl mx-auto text-sm leading-relaxed text-slate-500">
-							These supplementary blends pair beautifully with {product.name} to optimize your training and recovery balance.
+							{language === "fr" ? `Ces compléments s'associent parfaitement avec ${product.name} pour optimiser l'équilibre entre votre entraînement et votre récupération.` : `These supplementary blends pair beautifully with ${product.name} to optimize your training and recovery balance.`}
 						</p>
 					</div>
 
@@ -392,12 +404,12 @@ export const ProductDetailPage = () => {
 									onClick={(e) => {
 										e.stopPropagation();
 										addItem(rec);
-										toast.success(`${rec.name} added to cart!`);
+										toast.success(language === "fr" ? `${rec.name} ajouté au panier !` : `${rec.name} added to cart!`);
 									}}
 									className="mt-4 w-full h-10 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
 								>
 									<ShoppingBagIcon className="size-3.5" />
-									Add to cart
+									{t("common.addToCart")}
 								</OriginButton>
 							</div>
 						))}

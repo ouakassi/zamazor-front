@@ -90,8 +90,11 @@ export const useCartStore = create<CartStore>()(
 			totalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 			subtotal: () =>
 				get().items.reduce((sum, item) => {
-					const priceNum = parseFloat(item.product.price.replace("$", ""));
-					return sum + priceNum * item.quantity;
+					if (!item || !item.product || typeof item.product.price !== "string") {
+						return sum;
+					}
+					const priceNum = parseFloat(item.product.price.replace(/[^0-9.]/g, ""));
+					return isNaN(priceNum) ? sum : sum + priceNum * item.quantity;
 				}, 0),
 		}),
 		{

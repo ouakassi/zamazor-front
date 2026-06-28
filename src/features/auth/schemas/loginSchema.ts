@@ -8,7 +8,6 @@ export const loginRequestSchema = z.object({
 		.string()
 		.regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS_MESSAGE)
 		.trim(),
-	remember: z.boolean().optional(),
 });
 
 export const loginResponseSchema = z.object({

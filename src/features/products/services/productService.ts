@@ -1,7 +1,9 @@
 import { type Product } from "@/core/config/productsData";
+import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 import { isSystemError } from "@/shared/types";
 import { CONFIG } from "@/core/config/constants";
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
+import { publicApiRequest } from "@/shared/utils/axiosPublic";
 
 
 
@@ -19,6 +21,10 @@ export interface BackendProduct {
 	stockQuantity: number;
 	reservedQuantity: number;
 	category: BackendCategory;
+}
+
+interface PaginatedProductResponse {
+	items?: BackendProduct[];
 }
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -90,7 +96,7 @@ const productMetadataMap: Record<string, RichMetadata> = {
 };
 
 export function mapBackendProduct(backendProd: BackendProduct): Product {
-	const formattedPrice = `$${Number(backendProd.price).toFixed(2)}`;
+	const formattedPrice = `${Number(backendProd.price).toFixed(2)} MAD`;
 	const key = backendProd.name.toLowerCase();
 	const meta = productMetadataMap[key];
 
@@ -146,6 +152,7 @@ export function mapBackendProduct(backendProd: BackendProduct): Product {
 		theme: meta?.theme || "emerald",
 		image: imageUrl,
 		description: backendProd.description || meta?.description || "",
+		stock: backendProd.stockQuantity,
 		benefits: meta?.benefits || [
 			"Premium scientifically validated formula",
 			"Naturally sweetened, zero artificial colors",
@@ -156,11 +163,26 @@ export function mapBackendProduct(backendProd: BackendProduct): Product {
 	};
 }
 
+function extractProductItems(response: unknown): BackendProduct[] {
+	if (Array.isArray(response)) {
+		return response as BackendProduct[];
+	}
+
+	if (response && typeof response === "object") {
+		const paginated = response as PaginatedProductResponse;
+		if (Array.isArray(paginated.items)) {
+			return paginated.items;
+		}
+	}
+
+	return [];
+}
+
 export const productService = {
 	getProducts: async (): Promise<Product[]> => {
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<unknown>(
 			{
-				url: "/products?size=100",
+				url: `${API_ENDPOINTS.PRODUCTS.ROOT}?size=100`,
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -171,14 +193,7 @@ export const productService = {
 			return [];
 		}
 
-		let itemsList: BackendProduct[] = [];
-		if (Array.isArray(response)) {
-			itemsList = response;
-		} else if (response && typeof response === "object" && "items" in response && Array.isArray(response.items)) {
-			itemsList = response.items;
-		}
-
-		return itemsList.map(mapBackendProduct);
+		return extractProductItems(response).map(mapBackendProduct);
 	},
 
 	getProductById: async (id: string): Promise<Product | null> => {
@@ -186,9 +201,9 @@ export const productService = {
 			return null;
 		}
 
-		const response = await privateApiRequest<BackendProduct>(
+		const response = await publicApiRequest<BackendProduct>(
 			{
-				url: `/products/${id}`,
+				url: API_ENDPOINTS.PRODUCTS.DETAILS(id),
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -211,9 +226,9 @@ export const productService = {
 			return [];
 		}
 
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<unknown>(
 			{
-				url: `/products/category/${categoryId}?size=100`,
+				url: `${API_ENDPOINTS.PRODUCTS.CATEGORY(categoryId)}?size=100`,
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -224,20 +239,13 @@ export const productService = {
 			return [];
 		}
 
-		let itemsList: BackendProduct[] = [];
-		if (Array.isArray(response)) {
-			itemsList = response;
-		} else if (response && typeof response === "object" && "items" in response && Array.isArray(response.items)) {
-			itemsList = response.items;
-		}
-
-		return itemsList.map(mapBackendProduct);
+		return extractProductItems(response).map(mapBackendProduct);
 	},
 
 	searchProducts: async (query: string): Promise<Product[]> => {
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<unknown>(
 			{
-				url: `/products/search?q=${encodeURIComponent(query)}`,
+				url: API_ENDPOINTS.PRODUCTS.SEARCH(query),
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -248,20 +256,13 @@ export const productService = {
 			return [];
 		}
 
-		let itemsList: BackendProduct[] = [];
-		if (Array.isArray(response)) {
-			itemsList = response;
-		} else if (response && typeof response === "object" && "items" in response && Array.isArray(response.items)) {
-			itemsList = response.items;
-		}
-
-		return itemsList.map(mapBackendProduct);
+		return extractProductItems(response).map(mapBackendProduct);
 	},
 
 	getCategories: async (): Promise<BackendCategory[]> => {
-		const response = await privateApiRequest<BackendCategory[]>(
+		const response = await publicApiRequest<BackendCategory[]>(
 			{
-				url: "/categories",
+				url: API_ENDPOINTS.CATEGORIES.ROOT,
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -272,13 +273,37 @@ export const productService = {
 			return [];
 		}
 
-		return response;
+		return Array.isArray(response) ? response : [];
+	},
+
+	createCategory: async (label: string): Promise<BackendCategory | null> => {
+		try {
+			const response = await privateApiRequest<BackendCategory>({
+				url: API_ENDPOINTS.CATEGORIES.ROOT,
+				method: "POST",
+				data: { label },
+			});
+
+			if (isSystemError(response)) {
+				console.error("Create category failed:", response);
+				return null;
+			}
+
+			if (response && response.id && response.label) {
+				return response;
+			}
+
+			return null;
+		} catch (error) {
+			console.error("Create category request failed:", error);
+			return null;
+		}
 	},
 
 	createProduct: async (formData: FormData): Promise<Product | null> => {
 		try {
 			const response = await privateApiRequest<BackendProduct>({
-				url: "/products",
+				url: API_ENDPOINTS.PRODUCTS.ROOT,
 				method: "POST",
 				data: formData,
 				headers: {
@@ -300,7 +325,7 @@ export const productService = {
 	updateProduct: async (id: string, formData: FormData): Promise<Product | null> => {
 		try {
 			const response = await privateApiRequest<BackendProduct>({
-				url: `/products/${id}`,
+				url: API_ENDPOINTS.PRODUCTS.DETAILS(id),
 				method: "PUT",
 				data: formData,
 				headers: {
@@ -322,7 +347,7 @@ export const productService = {
 	deleteProduct: async (id: string): Promise<boolean> => {
 		try {
 			const response = await privateApiRequest<void>({
-				url: `/products/${id}`,
+				url: API_ENDPOINTS.PRODUCTS.DETAILS(id),
 				method: "DELETE",
 			});
 
@@ -333,6 +358,45 @@ export const productService = {
 			return true;
 		} catch (error) {
 			console.error("Delete product request failed:", error);
+			return false;
+		}
+	},
+
+	updateCategory: async (id: string, label: string): Promise<BackendCategory | null> => {
+		try {
+			const response = await privateApiRequest<BackendCategory>({
+				url: API_ENDPOINTS.CATEGORIES.DETAILS(id),
+				method: "PUT",
+				data: { label },
+			});
+
+			if (isSystemError(response)) {
+				console.error("Update category failed:", response);
+				return null;
+			}
+
+			return response && response.id ? response : null;
+		} catch (error) {
+			console.error("Update category request failed:", error);
+			return null;
+		}
+	},
+
+	deleteCategory: async (id: string): Promise<boolean> => {
+		try {
+			const response = await privateApiRequest<void>({
+				url: API_ENDPOINTS.CATEGORIES.DETAILS(id),
+				method: "DELETE",
+			});
+
+			if (isSystemError(response)) {
+				console.error("Delete category failed:", response);
+				return false;
+			}
+
+			return true;
+		} catch (error) {
+			console.error("Delete category request failed:", error);
 			return false;
 		}
 	},

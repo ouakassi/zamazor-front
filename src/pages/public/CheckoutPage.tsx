@@ -13,6 +13,7 @@ import logo from "@/assets/images/zamazor.svg";
 import { toast } from "sonner";
 import { orderService } from "@/features/orders/services/orderService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
+import { useLanguage } from "@/shared/context/LanguageContext";
 import {
 	ArrowLeft,
 	CreditCard,
@@ -28,6 +29,7 @@ import {
 export const CheckoutPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language, t } = useLanguage();
 	const items = useCartStore((state) => state.items);
 	const clearCart = useCartStore((state) => state.clearCart);
 	const subtotal = useCartStore((state) => state.subtotal());
@@ -49,6 +51,8 @@ export const CheckoutPage = () => {
 			address: "",
 			city: "",
 			zip: "",
+			phone: "",
+			country: "Morocco",
 			cardNumber: "",
 			cardExpiry: "",
 			cardCvv: "",
@@ -65,45 +69,54 @@ export const CheckoutPage = () => {
 			}
 			if (user.shippingAddress) {
 				const parts = user.shippingAddress.split(",").map((p) => p.trim());
-				if (parts.length >= 4) {
-					const hasNamePrefix = parts[0].toLowerCase().includes(user.fullName.toLowerCase()) || 
-					                     parts[0].toLowerCase().includes((user.fullName.trim().split(/\s+/)[0] || "").toLowerCase());
-					if (hasNamePrefix) {
-						setValue("address", parts[1] || "");
-						setValue("city", parts[2] || "");
-						setValue("zip", parts[3] || "");
-					} else {
-						setValue("address", parts[0] || "");
-						setValue("city", parts[1] || "");
-						setValue("zip", parts[2] || "");
-					}
-				} else if (parts.length === 3) {
-					setValue("address", parts[0] || "");
-					setValue("city", parts[1] || "");
-					setValue("zip", parts[2] || "");
+				
+				// Find and extract phone if present
+				const phonePart = parts.find(p => p.toLowerCase().startsWith("phone:"));
+				if (phonePart) {
+					const phoneVal = phonePart.split(":")[1]?.trim() || "";
+					setValue("phone", phoneVal);
+				}
+
+				// Filter out the phone and country parts to parse address/city/zip
+				const cleanParts = parts.filter(p => 
+					!p.toLowerCase().startsWith("phone:") && 
+					p.toLowerCase() !== "morocco"
+				);
+
+				if (cleanParts.length >= 3) {
+					setValue("address", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
+					setValue("zip", cleanParts[2] || "");
+				} else if (cleanParts.length === 2) {
+					setValue("address", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
 				} else {
-					setValue("address", user.shippingAddress);
+					setValue("address", cleanParts[0] || "");
 				}
 			}
 		}
 	}, [user, setValue]);
 
-	useDocumentTitle("Secure Checkout | Zamazor");
+	useDocumentTitle(`${t("checkout.title")} | Zamazor`);
 
 	// Calculations
 	const discountAmount = subtotal * (discountPercentage / 100);
-	const shippingThreshold = 50;
-	const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 4.99;
-	const orderTotal = subtotal - discountAmount + shippingCost;
+	const shippingCost: number = 0;
+	const orderTotal = subtotal - discountAmount;
 
 	const handleCheckoutSubmit = async (data: CheckoutFormValues) => {
 		setIsSubmitting(true);
 
 		try {
 			const auth = useAuthStore.getState();
-			const userId = auth.user?.id || "";
-			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}`;
-			const response = await orderService.checkout(userId, shippingAddress);
+			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}, Morocco, Phone: ${data.phone}`;
+			const response = await orderService.checkout({
+				country: "Morocco",
+				city: data.city,
+				street: `${data.address}, Phone: ${data.phone}`,
+				phone: data.phone,
+				isDefault: true,
+			});
 
 			// Update local auth store so the saved shipping address is stored and pre-filled next time
 			if (auth.user) {
@@ -116,12 +129,13 @@ export const CheckoutPage = () => {
 			}
 
 			setIsSubmitting(false);
+			clearCart();
 			setIsSuccess(true);
-			setOrderNumber(response.orderNumber);
-			toast.success("Order placed successfully!");
+			setOrderNumber(response.id.slice(0, 8).toUpperCase());
+			toast.success(language === "fr" ? "Commande passée avec succès !" : "Order placed successfully!");
 		} catch {
 			setIsSubmitting(false);
-			toast.error("An error occurred while placing your order. Please try again.");
+			toast.error(language === "fr" ? "Une erreur s'est produite lors de la commande." : "An error occurred while placing your order. Please try again.");
 		}
 	};
 
@@ -134,10 +148,10 @@ export const CheckoutPage = () => {
 		return (
 			<div className="flex min-h-screen flex-col items-center justify-center bg-[#fcfdfa] p-4 text-center">
 				<ShoppingBag className="size-16 text-emerald-900/25 mb-4" />
-				<h1 className="text-3xl font-playfair text-slate-900">Your checkout is empty</h1>
-				<p className="mt-2 text-slate-500">There are no items in your cart to checkout.</p>
+				<h1 className="text-3xl font-playfair text-slate-900">{language === "fr" ? "Votre panier est vide" : "Your checkout is empty"}</h1>
+				<p className="mt-2 text-slate-500">{language === "fr" ? "Il n'y a aucun article dans votre panier." : "There are no items in your cart to checkout."}</p>
 				<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl">
-					<Link to={APP_ROUTES.HOME}>Browse formulas</Link>
+					<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 				</Button>
 			</div>
 		);
@@ -148,36 +162,36 @@ export const CheckoutPage = () => {
 			<div className="min-h-screen bg-[#fcfdfa] flex flex-col items-center justify-center p-4">
 				<div className="max-w-md w-full bg-white rounded-3xl border border-emerald-900/10 p-6 sm:p-8 text-center shadow-xl shadow-emerald-950/5">
 					<CheckCircle2 className="size-16 text-emerald-600 mx-auto mb-5 animate-pulse" />
-					<h1 className="text-3xl font-playfair font-normal text-slate-950">Thank you for your order!</h1>
+					<h1 className="text-3xl font-playfair font-normal text-slate-950">{t("checkout.successTitle")}</h1>
 					<p className="text-sm text-slate-500 mt-2">
-						Your clean stack order has been successfully placed. We've sent a receipt details and updates to <strong className="text-slate-700">{getValues("email")}</strong>.
+						{language === "fr" ? "Votre commande de compléments propres a été passée avec succès. Les détails ont été envoyés à " : "Your clean stack order has been successfully placed. We've sent a receipt details and updates to "}<strong className="text-slate-700">{getValues("email")}</strong>.
 					</p>
 
 					<div className="my-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-900/5 text-left text-sm space-y-2">
 						<div className="flex justify-between">
-							<span className="text-slate-500">Order Number:</span>
+							<span className="text-slate-500">{t("checkout.orderNumber")}:</span>
 							<span className="font-mono font-bold text-slate-900">{orderNumber}</span>
 						</div>
 						<div className="flex justify-between">
-							<span className="text-slate-500">Delivery Method:</span>
-							<span className="font-bold text-slate-900">Standard Insured (3-5 days)</span>
+							<span className="text-slate-500">{t("checkout.delivery")}:</span>
+							<span className="font-bold text-slate-900">{t("checkout.standardShipping")}</span>
 						</div>
 						<div className="flex justify-between">
-							<span className="text-slate-500">Order Total:</span>
-							<span className="font-extrabold text-emerald-900">${orderTotal.toFixed(2)}</span>
+							<span className="text-slate-500">{language === "fr" ? "Total de la commande:" : "Order Total:"}</span>
+							<span className="font-extrabold text-emerald-900">{orderTotal.toFixed(2)} MAD</span>
 						</div>
 					</div>
 
 					<div className="flex items-center gap-2 justify-center text-xs text-emerald-800 font-bold uppercase tracking-wider mb-6">
 						<Sparkles className="size-4 animate-spin-slow text-emerald-700" />
-						<span>Consistency starts now</span>
+						<span>{language === "fr" ? "La régularité commence maintenant" : "Consistency starts now"}</span>
 					</div>
 
 					<Button
 						onClick={handleSuccessReturn}
 						className="w-full h-12 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl cursor-pointer shadow-md"
 					>
-						Return to homepage
+						{t("checkout.returnHome")}
 					</Button>
 				</div>
 			</div>
@@ -231,11 +245,11 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">1</span>
-									Contact Information
+									{t("checkout.step1")}
 								</h2>
 								<div className="space-y-3">
 									<div>
-										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Email address</label>
+										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.email")}</label>
 										<Input
 											type="email"
 											placeholder="you@example.com"
@@ -253,12 +267,12 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">2</span>
-									Shipping Details
+									{t("checkout.step2")}
 								</h2>
 								<div className="space-y-3">
 									<div className="grid grid-cols-2 gap-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">First name</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.firstName")}</label>
 											<Input
 												type="text"
 												placeholder="John"
@@ -270,7 +284,7 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Last name</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.lastName")}</label>
 											<Input
 												type="text"
 												placeholder="Doe"
@@ -284,7 +298,7 @@ export const CheckoutPage = () => {
 									</div>
 
 									<div>
-										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Address line 1</label>
+										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.address")}</label>
 										<Input
 											type="text"
 											placeholder="123 Wellness Way"
@@ -298,7 +312,7 @@ export const CheckoutPage = () => {
  
 									<div className="grid grid-cols-2 gap-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">City</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.city")}</label>
 											<Input
 												type="text"
 												placeholder="San Francisco"
@@ -310,7 +324,7 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Postal/ZIP Code</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.zip")}</label>
 											<Input
 												type="text"
 												placeholder="94103"
@@ -322,6 +336,31 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 									</div>
+
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.phone")}</label>
+											<Input
+												type="tel"
+												placeholder="+212 600-000000"
+												{...register("phone")}
+												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
+											/>
+											{errors.phone && (
+												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.phone.message}</p>
+											)}
+										</div>
+										<div>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.country")}</label>
+											<Input
+												type="text"
+												value="Morocco"
+												disabled
+												{...register("country")}
+												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-slate-50 text-slate-500 cursor-not-allowed"
+											/>
+										</div>
+									</div>
 								</div>
 							</div>
 
@@ -329,20 +368,20 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">3</span>
-									Secure Payment
+									{t("checkout.step3")}
 								</h2>
 								<div className="space-y-4">
 									{/* Credit card tab header */}
 									<div className="flex gap-2 p-1.5 bg-[#f0f7ec] rounded-xl border border-emerald-900/10">
 										<button type="button" className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-emerald-900 text-white shadow-xs">
 											<CreditCard className="size-4" />
-											Credit Card
+											{language === "fr" ? "Carte Bancaire" : "Credit Card"}
 										</button>
 									</div>
 
 									<div className="space-y-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Card number</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.card")}</label>
 											<Input
 												type="text"
 												placeholder="4111 2222 3333 4444"
@@ -356,7 +395,7 @@ export const CheckoutPage = () => {
  
 										<div className="grid grid-cols-2 gap-3">
 											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Expiry date</label>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.expiry")}</label>
 												<Input
 													type="text"
 													placeholder="MM/YY"
@@ -368,7 +407,7 @@ export const CheckoutPage = () => {
 												)}
 											</div>
 											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">CVV/CVC</label>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.cvv")}</label>
 												<Input
 													type="password"
 													maxLength={4}
@@ -393,11 +432,11 @@ export const CheckoutPage = () => {
 								className="w-full h-14 rounded-2xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/10 text-base"
 							>
 								{isSubmitting ? (
-									<span>Processing payment...</span>
+									<span>{t("checkout.submitting")}</span>
 								) : (
 									<>
 										<Lock className="size-4" />
-										Complete Order &bull; ${orderTotal.toFixed(2)}
+										{language === "fr" ? "Valider la Commande" : "Complete Order"} &bull; {orderTotal.toFixed(2)} MAD
 									</>
 								)}
 							</OriginButton>
@@ -407,7 +446,7 @@ export const CheckoutPage = () => {
 						<div className="space-y-4">
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-md shadow-emerald-950/5">
 								<h3 className="font-playfair text-lg font-bold text-slate-950 mb-4 border-b border-slate-100 pb-3">
-									Review Stack ({items.length})
+									{language === "fr" ? `Résumé de la commande (${items.length})` : `Review Stack (${items.length})`}
 								</h3>
 
 								{/* Items list */}
@@ -424,7 +463,10 @@ export const CheckoutPage = () => {
 												</div>
 											</div>
 											<span className="text-xs font-bold text-slate-900 shrink-0">
-												${(parseFloat(product.price.replace("$", "")) * quantity).toFixed(2)}
+												{product && typeof product.price === "string"
+													? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
+													: "0.00"
+												} MAD
 											</span>
 										</div>
 									))}
@@ -434,13 +476,13 @@ export const CheckoutPage = () => {
 								<div className="space-y-2.5 text-xs border-t border-slate-100 pt-4">
 									<div className="flex justify-between text-slate-500">
 										<span>Subtotal</span>
-										<span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
+										<span className="font-bold text-slate-900">{subtotal.toFixed(2)} MAD</span>
 									</div>
 
 									{discountPercentage > 0 && (
 										<div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 px-2 py-1 rounded-lg">
 											<span>Wellness Promo (20%)</span>
-											<span>-${discountAmount.toFixed(2)}</span>
+											<span>-{discountAmount.toFixed(2)} MAD</span>
 										</div>
 									)}
 
@@ -449,14 +491,14 @@ export const CheckoutPage = () => {
 										{shippingCost === 0 ? (
 											<span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] uppercase">Free</span>
 										) : (
-											<span className="font-bold text-slate-900">${shippingCost.toFixed(2)}</span>
+											<span className="font-bold text-slate-900">{shippingCost.toFixed(2)} MAD</span>
 										)}
 									</div>
 
 
 									<div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-100 pt-3 mt-2">
 										<span>Order Total</span>
-										<span>${orderTotal.toFixed(2)}</span>
+										<span>{orderTotal.toFixed(2)} MAD</span>
 									</div>
 								</div>
 							</div>

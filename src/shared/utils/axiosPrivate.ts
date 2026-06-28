@@ -86,9 +86,18 @@ axiosPrivate.interceptors.response.use(
 		} catch (refreshError) {
 			processQueue(refreshError, null);
 
-			import("@/core/routes/router").then((m) => {
-				m.default.navigate(APP_ROUTES.AUTH.LOGIN, { replace: true });
-			});
+			const publicRoutes = ["/", "/shop", "/product", "/cart", "/wishlist", "/login", "/register"];
+			const currentPath = window.location.pathname;
+			const isPublic = publicRoutes.some(route => 
+				currentPath === route || currentPath.startsWith(route + "/")
+			);
+
+			if (!isPublic) {
+				import("@/core/routes/router").then((m) => {
+					m.default.navigate(APP_ROUTES.AUTH.LOGIN, { replace: true });
+				});
+			}
+
 			if (tokenManager.getAccessToken()) {
 				notify.error("Session Expired", {
 					description:

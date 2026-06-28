@@ -6,20 +6,18 @@ import { useProductStore } from "@/features/products/stores/productStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { toast } from "sonner";
 import {
-	BrainIcon,
-	DumbbellIcon,
-	HeartPulseIcon,
-	LeafIcon,
-	MoonIcon,
-	ShoppingBagIcon,
+	Brain,
+	Dumbbell,
+	HeartPulse,
+	Leaf,
+	Moon,
+	ShoppingBag,
 	X,
-	ZapIcon,
+	Zap,
 } from "lucide-react";
 
 type QuizStep = "intro" | "focus" | "diet" | "activity" | "result";
 type QuizFocus = "performance" | "greens" | "wellness" | "energy" | "recovery" | "";
-type QuizActivity = "sedentary" | "moderate" | "intense";
-
 interface QuizModalProps {
 	onClose: () => void;
 }
@@ -34,7 +32,6 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 	const [quizStep, setQuizStep] = useState<QuizStep>("intro");
 	const [quizFocus, setQuizFocus] = useState<QuizFocus>("");
 	const [quizDiet, setQuizDiet] = useState<string>("vegan");
-	const [quizActivity, setQuizActivity] = useState<QuizActivity>("moderate");
 	const backdropRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -61,7 +58,6 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 		setQuizStep("intro");
 		setQuizFocus("");
 		setQuizDiet("vegan");
-		setQuizActivity("moderate");
 	};
 
 	return (
@@ -89,7 +85,7 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 
 				{quizStep === "intro" && (
 					<div className="flex flex-col items-center justify-center text-center py-6">
-						<BrainIcon className="size-14 text-emerald-800 mb-5 animate-pulse" />
+						<Brain className="size-14 text-emerald-800 mb-5 animate-pulse" />
 						<h3 className="text-xl font-playfair text-slate-950 font-normal">Find Your Clean Formula Match</h3>
 						<p className="text-slate-500 text-sm max-w-sm mt-3 leading-relaxed">Answer three quick questions about your health focus, diet, and activity level.</p>
 						<Button onClick={() => setQuizStep("focus")} className="mt-8 bg-emerald-900 hover:bg-emerald-950 text-white font-bold h-12 px-8 rounded-full cursor-pointer">
@@ -106,11 +102,11 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 						</div>
 						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 							{[
-								{ id: "performance", label: "Muscle Growth & Strength", icon: DumbbellIcon, desc: "Premium organic proteins" },
-								{ id: "greens", label: "Daily Micronutrients", icon: LeafIcon, desc: "Raw active supergreens" },
-								{ id: "energy", label: "Natural Stamina & Focus", icon: ZapIcon, desc: "Clean pre-workout spark" },
-								{ id: "recovery", label: "Muscle Repair & Sleep", icon: MoonIcon, desc: "Organic recovery BCAAs" },
-								{ id: "wellness", label: "Immunity & Longevity", icon: HeartPulseIcon, desc: "Adaptogen calm extracts" },
+								{ id: "performance", label: "Muscle Growth & Strength", icon: Dumbbell, desc: "Premium organic proteins" },
+								{ id: "greens", label: "Daily Micronutrients", icon: Leaf, desc: "Raw active supergreens" },
+								{ id: "energy", label: "Natural Stamina & Focus", icon: Zap, desc: "Clean pre-workout spark" },
+								{ id: "recovery", label: "Muscle Repair & Sleep", icon: Moon, desc: "Organic recovery BCAAs" },
+								{ id: "wellness", label: "Immunity & Longevity", icon: HeartPulse, desc: "Adaptogen calm extracts" },
 							].map((opt) => (
 								<button
 									key={opt.id}
@@ -170,7 +166,7 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 							].map((opt) => (
 								<button
 									key={opt.id}
-									onClick={() => { setQuizActivity(opt.id as QuizActivity); setQuizStep("result"); }}
+									onClick={() => { setQuizStep("result"); }}
 									className="p-4 bg-white rounded-2xl border border-emerald-900/10 hover:border-emerald-700 hover:bg-emerald-50/20 text-left transition-all duration-150 cursor-pointer shadow-sm group"
 								>
 									<p className="text-sm font-bold text-slate-900 leading-tight group-hover:text-emerald-800 transition-colors">{opt.label}</p>
@@ -209,7 +205,7 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 											onClick={() => { addItem(recommendedProduct); toast.success(`${recommendedProduct.name} added to cart!`); }}
 											className="flex-1 sm:flex-initial h-10 px-5 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
 										>
-											<ShoppingBagIcon className="size-3.5" />
+											<ShoppingBag className="size-3.5" />
 											Add to Cart
 										</Button>
 										<Button

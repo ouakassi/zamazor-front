@@ -5,6 +5,7 @@ import { APP_ROUTES } from "@/core/routes/paths";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { useLanguage } from "@/shared/context/LanguageContext";
 import {
 	NavigationMenu,
 	NavigationMenuContent,
@@ -16,10 +17,10 @@ import {
 import { OriginButton } from "@/shared/components/ui/origin-button";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
-import { useAuthStore, clearAuth } from "@/features/auth/stores/authStore";
+import { useAuthStore } from "@/features/auth/stores/authStore";
 import { AuthStatus } from "@/features/auth/types";
-import { authService } from "@/features/auth/services/authService";
 import { productService } from "@/features/products/services/productService";
+import type { Product } from "@/core/config/productsData";
 import {
 	DumbbellIcon,
 	LeafIcon,
@@ -78,6 +79,7 @@ const categories = [
 export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 	({ className }, ref) => {
 		const navigate = useNavigate();
+		const { language, setLanguage, t } = useLanguage();
 		const cartItems = useCartStore((state) => state.items);
 		const cartCount = React.useMemo(() => {
 			return cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -98,7 +100,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 			prevCountRef.current = cartCount;
 		}, [cartCount]);
 
-		const [suggestions, setSuggestions] = React.useState<any[]>([]);
+		const [suggestions, setSuggestions] = React.useState<Product[]>([]);
 		const [showSuggestions, setShowSuggestions] = React.useState(false);
 		const [showMobileSuggestions, setShowMobileSuggestions] = React.useState(false);
 		const [loadingSuggestions, setLoadingSuggestions] = React.useState(false);
@@ -159,16 +161,6 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 			}
 		};
 
-		const handleLogout = async () => {
-			try {
-				await authService.logout();
-			} catch (e) {
-				console.error("Logout API call failed, clearing auth locally:", e);
-				clearAuth();
-			}
-			navigate(APP_ROUTES.HOME);
-		};
-
 		return (
 			<header
 				ref={ref}
@@ -219,7 +211,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 									setShowSuggestions(true);
 								}}
 								onFocus={() => setShowSuggestions(true)}
-								placeholder="Search clean formulas, supplement stacks, or categories..."
+								placeholder={t("common.searchPlaceholder")}
 								className="h-11 w-full rounded-full border border-emerald-900/15 bg-white pl-5 pr-14 text-sm shadow-xs focus-visible:border-emerald-600 focus-visible:ring-emerald-600/10 focus-visible:ring-offset-0 placeholder:text-slate-400"
 							/>
 							<Button
@@ -294,6 +286,28 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 							)}
 						</Link>
 
+						{/* Language Switcher */}
+						<div className="flex items-center gap-1 bg-emerald-50/50 border border-emerald-950/10 p-0.5 rounded-full mr-1">
+							<button
+								onClick={() => setLanguage("en")}
+								className={cn(
+									"h-6 px-2 text-[10px] font-bold rounded-full transition-all cursor-pointer",
+									language === "en" ? "bg-emerald-900 text-white shadow-xs" : "text-emerald-800 hover:bg-emerald-50/30"
+								)}
+							>
+								EN
+							</button>
+							<button
+								onClick={() => setLanguage("fr")}
+								className={cn(
+									"h-6 px-2 text-[10px] font-bold rounded-full transition-all cursor-pointer",
+									language === "fr" ? "bg-emerald-900 text-white shadow-xs" : "text-emerald-800 hover:bg-emerald-50/30"
+								)}
+							>
+								FR
+							</button>
+						</div>
+
 						{/* Desktop Account Controls */}
 						{isAuthenticated ? (
 							<div className="hidden sm:flex items-center gap-1.5">
@@ -303,7 +317,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 									className="h-9 px-4 rounded-full text-xs font-semibold items-center gap-1.5 cursor-pointer"
 								>
 									<UserIcon className="size-3.5" />
-									{user?.role === "ADMIN" ? "Dashboard" : (user?.fullName ? user.fullName.trim().split(/\s+/)[0] : "Profile")}
+									{user?.role === "ADMIN" ? t("nav.dashboard") : (user?.fullName ? user.fullName.trim().split(/\s+/)[0] : t("nav.profile"))}
 								</OriginButton>
 							</div>
 						) : (
@@ -313,7 +327,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 								className="hidden sm:inline-flex h-9 px-4 rounded-full text-xs font-semibold items-center gap-1.5 cursor-pointer"
 							>
 								<UserIcon className="size-3.5" />
-								Sign in
+								{t("nav.login")}
 							</OriginButton>
 						)}
 
@@ -351,7 +365,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 								setShowMobileSuggestions(true);
 							}}
 							onFocus={() => setShowMobileSuggestions(true)}
-							placeholder="Search healthy formulas..."
+							placeholder={t("common.searchPlaceholder")}
 							className="h-10 w-full rounded-full border border-emerald-900/10 bg-white pl-4 pr-12 text-xs shadow-xs focus-visible:border-emerald-600 focus-visible:ring-emerald-600/10 focus-visible:ring-offset-0"
 						/>
 						<Button
@@ -442,7 +456,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 
 						<Link to={APP_ROUTES.SHOP} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-emerald-900 px-2 py-1 rounded-md hover:bg-emerald-50/50 transition-colors">
 							<Store className="size-3.5 text-emerald-850" />
-							Store
+							{t("nav.shop")}
 						</Link>
 						<Link to="/#products" className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-emerald-900 px-2 py-1 rounded-md hover:bg-emerald-50/50 transition-colors">
 							<Sparkles className="size-3.5 text-emerald-850" />

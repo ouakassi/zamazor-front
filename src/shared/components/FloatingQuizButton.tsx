@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SparklesIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { QuizModal } from "./QuizModal";
 
 export const FloatingQuizButton = () => {
@@ -11,7 +11,7 @@ export const FloatingQuizButton = () => {
 			<div className="fixed bottom-6 right-6 z-[9998] flex flex-col items-end gap-2 group">
 				{/* Tooltip label */}
 				<div className="hidden group-hover:flex items-center gap-2 bg-emerald-950 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap transition-all">
-					<SparklesIcon className="size-3 text-lime-300" />
+					<Sparkles className="size-3 text-lime-300" />
 					Supplement Advisor Quiz
 				</div>
 				<button
@@ -21,7 +21,7 @@ export const FloatingQuizButton = () => {
 				>
 					{/* Ping animation ring */}
 					<span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
-					<SparklesIcon className="size-6 relative z-10" />
+					<Sparkles className="size-6 relative z-10" />
 				</button>
 			</div>
 

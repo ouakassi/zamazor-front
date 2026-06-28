@@ -1,21 +1,33 @@
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { isSystemError } from "@/shared/types";
+import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
+
+export interface BackendOrderProduct {
+	id: string;
+	name: string;
+	description?: string | null;
+	imageUrl?: string | null;
+	price: number;
+	stockQuantity: number;
+	reservedQuantity: number;
+	category: { id: string; label: string };
+}
 
 export interface BackendOrderItem {
 	id: string;
-	productId: string;
-	productName: string;
-	price: number;
+	unitPrice: number;
+	product: BackendOrderProduct;
 	quantity: number;
 }
 
 export interface BackendOrder {
 	id: string;
-	orderNumber: string;
-	createdAt: string;
+	userId: string;
 	status: string;
-	totalAmount: number;
+	total: number;
 	items: BackendOrderItem[];
+	createdAt: string;
+	shippingAddress: string;
 }
 
 export interface CheckoutRequest {
@@ -33,11 +45,34 @@ export interface CheckoutRequest {
 	};
 }
 
+export interface ChangeOrderStatusRequest {
+	status: string;
+}
+
+interface PaginatedResponse<T> {
+	items?: T[];
+}
+
+function extractItems<T>(response: unknown): T[] {
+	if (Array.isArray(response)) {
+		return response as T[];
+	}
+
+	if (response && typeof response === "object" && "items" in response) {
+		const paginated = response as PaginatedResponse<T>;
+		if (Array.isArray(paginated.items)) {
+			return paginated.items;
+		}
+	}
+
+	return [];
+}
+
 export const orderService = {
 	getUserOrders: async (): Promise<BackendOrder[]> => {
 		try {
 			const response = await privateApiRequest<BackendOrder[]>({
-				url: "/orders/me",
+				url: API_ENDPOINTS.ORDERS.ME,
 				method: "GET",
 			});
 
@@ -46,12 +81,7 @@ export const orderService = {
 				return [];
 			}
 
-			if (Array.isArray(response)) {
-				return response;
-			} else if (response && typeof response === "object" && "items" in response && Array.isArray((response as any).items)) {
-				return (response as any).items;
-			}
-			return [];
+			return extractItems<BackendOrder>(response);
 		} catch (error) {
 			console.error("Failed to fetch user orders from API:", error);
 			return [];
@@ -61,7 +91,7 @@ export const orderService = {
 	getAllOrders: async (): Promise<BackendOrder[]> => {
 		try {
 			const response = await privateApiRequest<BackendOrder[]>({
-				url: "/orders",
+				url: API_ENDPOINTS.ORDERS.ROOT,
 				method: "GET",
 			});
 
@@ -70,12 +100,7 @@ export const orderService = {
 				return [];
 			}
 
-			if (Array.isArray(response)) {
-				return response;
-			} else if (response && typeof response === "object" && "items" in response && Array.isArray((response as any).items)) {
-				return (response as any).items;
-			}
-			return [];
+			return extractItems<BackendOrder>(response);
 		} catch (error) {
 			console.error("Get all orders request failed:", error);
 			return [];
@@ -85,7 +110,7 @@ export const orderService = {
 	getOrderById: async (id: string): Promise<BackendOrder | null> => {
 		try {
 			const response = await privateApiRequest<BackendOrder>({
-				url: `/orders/${id}`,
+				url: API_ENDPOINTS.ORDERS.DETAILS(id),
 				method: "GET",
 			});
 
@@ -104,11 +129,11 @@ export const orderService = {
 		}
 	},
 
-	checkout: async (userId: string, shippingAddress: string): Promise<BackendOrder> => {
+	checkout: async (payload: { country: string; city: string; street: string; phone: string; isDefault: boolean }): Promise<BackendOrder> => {
 		const response = await privateApiRequest<BackendOrder>({
-			url: `/orders/checkout?userId=${userId}`,
+			url: API_ENDPOINTS.ORDERS.CHECKOUT,
 			method: "POST",
-			data: { shippingAddress },
+			data: payload,
 		});
 
 		if (isSystemError(response)) {
@@ -126,7 +151,7 @@ export const orderService = {
 	cancelOrder: async (orderId: string): Promise<boolean> => {
 		try {
 			const response = await privateApiRequest<unknown>({
-				url: `/orders/${orderId}/cancel`,
+				url: API_ENDPOINTS.ORDERS.CANCEL(orderId),
 				method: "POST",
 			});
 
@@ -139,6 +164,26 @@ export const orderService = {
 		} catch (error) {
 			console.error("Cancel order request failed:", error);
 			return false;
+		}
+	},
+
+	changeOrderStatus: async (orderId: string, status: string): Promise<BackendOrder | null> => {
+		try {
+			const response = await privateApiRequest<BackendOrder>({
+				url: API_ENDPOINTS.ORDERS.STATUS(orderId),
+				method: "PATCH",
+				data: { status },
+			});
+
+			if (isSystemError(response)) {
+				console.error("Change order status request returned system error:", response);
+				return null;
+			}
+
+			return response && response.id ? response : null;
+		} catch (error) {
+			console.error("Change order status request failed:", error);
+			return null;
 		}
 	},
 };

@@ -7,9 +7,11 @@ import { Link } from "react-router";
 import { APP_ROUTES } from "@/core/routes/paths";
 import heroGreens from "@/assets/images/hero_greens.png";
 import logo from "@/assets/images/zamazor.svg";
+import { useLanguage } from "@/shared/context/LanguageContext";
 
 export const RegisterPage = () => {
-	useDocumentTitle(`Register | ${CONFIG.APP_NAME}`);
+	const { language } = useLanguage();
+	useDocumentTitle(`${language === "fr" ? "Inscription" : "Register"} | ${CONFIG.APP_NAME}`);
 
 	return (
 		<div className="min-h-screen flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-950 p-0 md:p-4">
@@ -33,13 +35,13 @@ export const RegisterPage = () => {
 					
 					<div className="relative z-10 flex flex-col justify-end h-full">
 						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-300 text-emerald-950 text-xs font-semibold tracking-wide w-fit mb-4 uppercase">
-							Pure & Traceable Ingredients
+							{language === "fr" ? "Ingrédients Purs & Traçables" : "Pure & Traceable Ingredients"}
 						</div>
 						<h1 className="text-3xl md:text-4xl font-semibold leading-tight tracking-tight text-white mb-3 font-playfair">
-							Fuel your peak performance.
+							{language === "fr" ? "Alimentez vos performances maximales." : "Fuel your peak performance."}
 						</h1>
 						<p className="text-sm text-gray-200/90 leading-relaxed max-w-md">
-							Experience the purity of science-backed, premium organic supplements made to support your daily wellness journey.
+							{language === "fr" ? "Découvrez la pureté de suppléments biologiques premium formulés scientifiquement pour accompagner votre bien-être quotidien." : "Experience the purity of science-backed, premium organic supplements made to support your daily wellness journey."}
 						</p>
 					</div>
 				</div>
@@ -54,17 +56,17 @@ export const RegisterPage = () => {
 							className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-emerald-800 dark:text-lime-300 border border-gray-200 dark:border-gray-800 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm"
 						>
 							<ArrowLeft className="h-3.5 w-3.5" />
-							Go to Store
+							{language === "fr" ? "Retour à la Boutique" : "Go to Store"}
 						</Link>
 					</div>
 
 					<div className="flex flex-col items-center text-center mb-6 mt-2 md:mt-0">
 						<img src={logo} alt="Zamazor Logo" className="h-10 mb-4 object-contain rounded-lg" />
 						<h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1 text-gray-900 dark:text-white">
-							Join Zamazor
+							{language === "fr" ? "Rejoindre Zamazor" : "Join Zamazor"}
 						</h2>
 						<p className="text-xs text-gray-500 dark:text-gray-400">
-							Start your path to peak wellness today.
+							{language === "fr" ? "Commencez votre parcours vers un bien-être optimal dès aujourd'hui." : "Start your path to peak wellness today."}
 						</p>
 					</div>
 

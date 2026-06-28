@@ -1,11 +1,10 @@
 import { useNavigate, Link } from "react-router";
-import { useState } from "react";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 
+import { useLanguage } from "@/shared/context/LanguageContext";
 import { toast } from "sonner";
 import {
 	ArrowLeft,
@@ -17,17 +16,17 @@ import {
 
 export const CartPage = () => {
 	const navigate = useNavigate();
+	const { language, t } = useLanguage();
 	const items = useCartStore((state) => state.items);
 	const updateQuantity = useCartStore((state) => state.updateQuantity);
 	const removeItem = useCartStore((state) => state.removeItem);
 	const subtotal = useCartStore((state) => state.subtotal());
 
-	useDocumentTitle("Shopping Cart | Zamazor");
+	useDocumentTitle(`${t("cart.title")} | Zamazor`);
 
 	// Calculations
-	const shippingThreshold = 50;
-	const shippingCost = subtotal >= shippingThreshold || subtotal === 0 ? 0 : 4.99;
-	const orderTotal = subtotal + shippingCost;
+	const shippingCost: number = 0;
+	const orderTotal = subtotal;
 
 
 
@@ -37,18 +36,18 @@ export const CartPage = () => {
 				{/* Cart page body */}
 				<main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 					<h1 className="text-3xl sm:text-4xl font-playfair font-normal text-slate-950 mb-8">
-						Your Shopping Cart
+						{t("cart.title")}
 					</h1>
 
 					{items.length === 0 ? (
 						<div className="text-center py-20 bg-white rounded-3xl border border-emerald-900/5 shadow-xs max-w-xl mx-auto px-6">
 							<ShoppingBagIcon className="size-16 text-emerald-900/25 mx-auto mb-4" />
-							<h2 className="text-2xl font-playfair text-slate-900">Your cart is empty</h2>
+							<h2 className="text-2xl font-playfair text-slate-900">{t("cart.empty")}</h2>
 							<p className="text-slate-500 mt-2 max-w-sm mx-auto text-sm leading-relaxed">
-								You haven't added any clean formulas to your stack yet. Build a simpler routine today.
+								{t("cart.emptyDesc")}
 							</p>
 							<Button asChild className="mt-8 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl h-11 px-6">
-								<Link to={APP_ROUTES.HOME}>Browse formulas</Link>
+								<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 							</Button>
 						</div>
 					) : (
@@ -104,16 +103,19 @@ export const CartPage = () => {
 											{/* Price Subtotal */}
 											<div className="text-right min-w-[70px]">
 												<p className="text-sm font-black text-slate-900">
-													${(parseFloat(product.price.replace("$", "")) * quantity).toFixed(2)}
+													{product && typeof product.price === "string"
+														? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
+														: "0.00"
+													} MAD
 												</p>
-												<p className="text-[10px] text-slate-400 mt-0.5">{product.price} each</p>
+												<p className="text-[10px] text-slate-400 mt-0.5">{product.price} {language === "fr" ? "chacun" : "each"}</p>
 											</div>
 
 											{/* Delete button */}
 											<button
 												onClick={() => {
 													removeItem(product.id);
-													toast.error(`${product.name} removed from cart`);
+													toast.error(language === "fr" ? `${product.name} retiré du panier` : `${product.name} removed from cart`);
 												}}
 												className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
 												aria-label="Remove item"
@@ -129,7 +131,7 @@ export const CartPage = () => {
 									className="flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors pt-4 group cursor-pointer"
 								>
 									<ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-									Continue shopping formulas
+									{language === "fr" ? "Continuer à acheter des formules" : "Continue shopping formulas"}
 								</button>
 							</div>
 
@@ -137,37 +139,30 @@ export const CartPage = () => {
 							<div className="space-y-4">
 								<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-md shadow-emerald-950/5">
 									<h3 className="font-playfair text-xl font-bold text-slate-950 mb-5 border-b border-slate-100 pb-4">
-										Order Summary
+										{t("checkout.orderSummary")}
 									</h3>
 
 									<div className="space-y-3.5 text-sm">
 										<div className="flex justify-between text-slate-600">
-											<span>Subtotal</span>
-											<span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
+											<span>{t("cart.subtotal")}</span>
+											<span className="font-bold text-slate-900">{subtotal.toFixed(2)} MAD</span>
 										</div>
 
 
 										<div className="flex justify-between text-slate-600">
-											<span>Shipping</span>
+											<span>{t("cart.shipping")}</span>
 											{shippingCost === 0 ? (
 												<span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs uppercase tracking-wide">
-													Free
+													{language === "fr" ? "Gratuit" : "Free"}
 												</span>
 											) : (
-												<span className="font-bold text-slate-900">${shippingCost.toFixed(2)}</span>
+												<span className="font-bold text-slate-900">{shippingCost.toFixed(2)} MAD</span>
 											)}
 										</div>
 
-										{shippingCost > 0 && (
-											<p className="text-[11px] text-slate-400 leading-snug">
-												Add <strong className="text-slate-500">${(shippingThreshold - subtotal).toFixed(2)}</strong> more to get free shipping!
-											</p>
-										)}
-
-
 										<div className="flex justify-between text-base font-black text-slate-900 border-t border-slate-100 pt-4 mt-2">
-											<span>Total</span>
-											<span>${orderTotal.toFixed(2)}</span>
+											<span>{t("cart.total")}</span>
+											<span>{orderTotal.toFixed(2)} MAD</span>
 										</div>
 									</div>
 
@@ -176,7 +171,7 @@ export const CartPage = () => {
 										onClick={() => navigate(APP_ROUTES.CHECKOUT)}
 										className="w-full h-12 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl mt-6 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/10"
 									>
-										Proceed to checkout
+										{t("cart.checkoutBtn")}
 										<ArrowRightIcon className="size-4" />
 									</Button>
 								</div>

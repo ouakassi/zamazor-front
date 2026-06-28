@@ -4,17 +4,18 @@ import { Toaster } from "sonner";
 import { RouterProvider } from "react-router";
 import { useEffect } from "react";
 import { userService } from "./features/auth/services/usersService";
+import { LanguageProvider } from "./shared/context/LanguageContext";
 
 function App() {
 	useEffect(() => {
-		userService.fetchCurrentUser();
+		void userService.fetchCurrentUser();
 	}, []);
 
 	return (
-		<>
+		<LanguageProvider>
 			<RouterProvider router={router} />
 			<Toaster position="bottom-left" />
-		</>
+		</LanguageProvider>
 	);
 }
 
