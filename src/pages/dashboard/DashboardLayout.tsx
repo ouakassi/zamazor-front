@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router";
 import { SidebarNav } from "@/shared/components/ui/dashboard-sidebar";
-import { Menu, Home, LayoutDashboard, FolderKanban, Inbox } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Menu } from "lucide-react";
 import { authService } from "@/features/auth/services/authService";
-import { useAuthStore } from "@/features/auth/stores/authStore";
+import { clearAuth } from "@/features/auth/stores/authStore";
 import { toast } from "sonner";
 import { APP_ROUTES } from "@/core/routes/paths";
 
@@ -26,14 +25,15 @@ export const DashboardLayout = () => {
 	const handleLogout = async () => {
 		try {
 			await authService.logout();
+			clearAuth();
 			toast.success("Successfully logged out.");
-			navigate(APP_ROUTES.HOME);
 		} catch (e) {
 			console.error("Logout failed:", e);
-			useAuthStore.setState({ user: null, status: 3 });
+			clearAuth();
 			toast.success("Logged out.");
-			navigate(APP_ROUTES.HOME);
 		}
+
+		navigate(APP_ROUTES.HOME);
 	};
 
 	return (
@@ -45,6 +45,8 @@ export const DashboardLayout = () => {
 				onSelect={(id) => {
 					if (id === "logout") {
 						handleLogout();
+					} else if (id === "store") {
+						navigate(APP_ROUTES.HOME);
 					} else {
 						navigate(id === "overview" ? "/dashboard" : `/dashboard/${id}`);
 					}
@@ -70,6 +72,8 @@ export const DashboardLayout = () => {
 					onSelect={(id) => {
 						if (id === "logout") {
 							handleLogout();
+						} else if (id === "store") {
+							navigate(APP_ROUTES.HOME);
 						} else {
 							navigate(id === "overview" ? "/dashboard" : `/dashboard/${id}`);
 						}
@@ -79,39 +83,16 @@ export const DashboardLayout = () => {
 			</div>
 
 			{/* Main Content Pane */}
-			<div className="flex-1 flex flex-col overflow-y-auto">
-				{/* Top Navbar */}
-				<header className="sticky top-0 z-30 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-					<div className="flex items-center gap-3">
-						<button
-							onClick={() => setIsMobileSidebarOpen(true)}
-							className="md:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl"
-						>
-							<Menu className="size-5" />
-						</button>
-						<div className="flex items-center gap-2 text-emerald-800">
-							{activeTab === "overview" && <LayoutDashboard className="size-5" />}
-							{activeTab === "products" && <FolderKanban className="size-5" />}
-							{activeTab === "orders" && <Inbox className="size-5" />}
-							<h1 className="text-lg font-bold text-slate-900 capitalize">
-								{activeTab} Management
-							</h1>
-						</div>
-					</div>
+			<div className="relative flex-1 flex flex-col overflow-y-auto">
+				<button
+					onClick={() => setIsMobileSidebarOpen(true)}
+					className="md:hidden fixed left-4 top-4 z-40 rounded-xl border border-slate-200 bg-white/95 p-2.5 text-slate-600 shadow-sm backdrop-blur-sm hover:bg-white hover:text-slate-900"
+					aria-label="Open dashboard menu"
+				>
+					<Menu className="size-5" />
+				</button>
 
-					<div className="flex items-center gap-3">
-						<Button
-							variant="outline"
-							onClick={() => navigate(APP_ROUTES.HOME)}
-							className="cursor-pointer rounded-xl h-10 px-4 text-xs font-bold border-emerald-900/10 hover:bg-slate-50"
-						>
-							<Home className="size-3.5 mr-1.5" />
-							Storefront
-						</Button>
-					</div>
-				</header>
-
-				<main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+				<main className="flex-1 p-4 pt-16 sm:p-6 sm:pt-8 lg:p-8 max-w-7xl w-full mx-auto">
 					<Outlet />
 				</main>
 			</div>

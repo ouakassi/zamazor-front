@@ -18,8 +18,6 @@ import {
 
 type QuizStep = "intro" | "focus" | "diet" | "activity" | "result";
 type QuizFocus = "performance" | "greens" | "wellness" | "energy" | "recovery" | "";
-type QuizActivity = "sedentary" | "moderate" | "intense";
-
 interface QuizModalProps {
 	onClose: () => void;
 }
@@ -34,7 +32,6 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 	const [quizStep, setQuizStep] = useState<QuizStep>("intro");
 	const [quizFocus, setQuizFocus] = useState<QuizFocus>("");
 	const [quizDiet, setQuizDiet] = useState<string>("vegan");
-	const [quizActivity, setQuizActivity] = useState<QuizActivity>("moderate");
 	const backdropRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -61,7 +58,6 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 		setQuizStep("intro");
 		setQuizFocus("");
 		setQuizDiet("vegan");
-		setQuizActivity("moderate");
 	};
 
 	return (
@@ -170,7 +166,7 @@ export const QuizModal = ({ onClose }: QuizModalProps) => {
 							].map((opt) => (
 								<button
 									key={opt.id}
-									onClick={() => { setQuizActivity(opt.id as QuizActivity); setQuizStep("result"); }}
+									onClick={() => { setQuizStep("result"); }}
 									className="p-4 bg-white rounded-2xl border border-emerald-900/10 hover:border-emerald-700 hover:bg-emerald-50/20 text-left transition-all duration-150 cursor-pointer shadow-sm group"
 								>
 									<p className="text-sm font-bold text-slate-900 leading-tight group-hover:text-emerald-800 transition-colors">{opt.label}</p>

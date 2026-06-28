@@ -7,18 +7,18 @@ import {
 import { EmailField } from "../../../../shared/components/fields/EmailField";
 import { PasswordField } from "../../../../shared/components/fields/PasswordField";
 import { useForm } from "react-hook-form";
-import { CheckboxField } from "@/shared/components/fields/CheckBoxField";
 import { useLocation, useNavigate } from "react-router";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { authService } from "../../services/authService";
 import { isSystemError } from "@/shared/types";
 import { notify } from "@/lib/notify";
-
+import { useLanguage } from "@/shared/context/LanguageContext";
 import { useAuthStore } from "../../stores/authStore";
 
 export const LoginForm = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language } = useLanguage();
 	const from = location.state?.from?.pathname || APP_ROUTES.HOME;
 
 	const onSubmit = async (data: LoginRequest) => {
@@ -37,10 +37,16 @@ export const LoginForm = () => {
 	};
 
 	const onError = () => {
-		notify.error("Validation Error", {
-			description: "Please fix the errors in the form.",
-			requiresInternet: false,
-		});
+		notify.error(
+			language === "fr" ? "Erreur de validation" : "Validation Error",
+			{
+				description:
+					language === "fr"
+						? "Veuillez corriger les erreurs dans le formulaire."
+						: "Please fix the errors in the form.",
+				requiresInternet: false,
+			},
+		);
 	};
 
 	const {
@@ -59,31 +65,17 @@ export const LoginForm = () => {
 		>
 			<EmailField
 				name="email"
-				label="Email"
+				label={language === "fr" ? "Adresse e-mail" : "Email"}
 				register={register}
 				errors={errors}
 			/>
 			<PasswordField
 				name="password"
-				label="Password"
+				label={language === "fr" ? "Mot de passe" : "Password"}
 				register={register}
 				errors={errors}
 			/>
 
-			<div className="flex items-center justify-between gap-4 py-1">
-				<CheckboxField
-					label="Remember me"
-					name="remember"
-					errors={errors}
-					register={register}
-				/>
-				<button
-					type="button"
-					className="shrink-0 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors"
-				>
-					Forgot password?
-				</button>
-			</div>
 			<OriginButton
 				type="submit"
 				variant="emerald"
@@ -91,7 +83,13 @@ export const LoginForm = () => {
 				disabled={!isDirty}
 				className="w-full flex justify-center rounded-lg font-semibold"
 			>
-				{isSubmitting ? "Signing in…" : "Sign in"}
+				{isSubmitting
+					? language === "fr"
+						? "Connexion en cours…"
+						: "Signing in…"
+					: language === "fr"
+						? "Se connecter"
+						: "Sign in"}
 			</OriginButton>
 		</form>
 	);

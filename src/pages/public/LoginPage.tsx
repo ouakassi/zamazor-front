@@ -7,9 +7,11 @@ import { Link } from "react-router";
 import { APP_ROUTES } from "@/core/routes/paths";
 import heroProtein from "@/assets/images/hero_protein.png";
 import logo from "@/assets/images/zamazor.svg";
+import { useLanguage } from "@/shared/context/LanguageContext";
 
 const LoginPage = () => {
-	useDocumentTitle(`Login | ${CONFIG.APP_NAME}`);
+	const { language } = useLanguage();
+	useDocumentTitle(`${language === "fr" ? "Connexion" : "Login"} | ${CONFIG.APP_NAME}`);
 
 	return (
 		<div className="min-h-screen flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-950 p-0 md:p-4">
@@ -33,13 +35,13 @@ const LoginPage = () => {
 					
 					<div className="relative z-10 flex flex-col justify-end h-full">
 						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400 text-emerald-950 text-xs font-semibold tracking-wide w-fit mb-4 uppercase">
-							100% Organic & Clean
+							{language === "fr" ? "100% Bio & Propre" : "100% Organic & Clean"}
 						</div>
 						<h1 className="text-3xl md:text-4xl font-semibold leading-tight tracking-tight text-white mb-3 font-playfair">
-							Fuel your journey to peak health.
+							{language === "fr" ? "Alimentez votre santé maximale." : "Fuel your journey to peak health."}
 						</h1>
 						<p className="text-sm text-gray-200/90 leading-relaxed max-w-md">
-							Get scientifically formulated supplements, personalized health tracking, and exclusive founder rewards.
+							{language === "fr" ? "Bénéficiez de suppléments formulés scientifiquement, d'un suivi de santé personnalisé et de récompenses exclusives." : "Get scientifically formulated supplements, personalized health tracking, and exclusive founder rewards."}
 						</p>
 					</div>
 				</div>
@@ -54,17 +56,17 @@ const LoginPage = () => {
 							className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-emerald-800 dark:text-lime-300 border border-gray-200 dark:border-gray-800 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm"
 						>
 							<ArrowLeft className="h-3.5 w-3.5" />
-							Go to Store
+							{language === "fr" ? "Retour à la Boutique" : "Go to Store"}
 						</Link>
 					</div>
 
 					<div className="flex flex-col items-center text-center mb-6 mt-2 md:mt-0">
 						<img src={logo} alt="Zamazor Logo" className="h-10 mb-4 object-contain rounded-lg" />
 						<h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1 text-gray-900 dark:text-white">
-							Sign In To Your Account
+							{language === "fr" ? "Connectez-vous à votre compte" : "Sign In To Your Account"}
 						</h2>
 						<p className="text-xs text-gray-500 dark:text-gray-400">
-							Welcome back! Please sign in to your Zamazor account.
+							{language === "fr" ? "Bon retour ! Veuillez vous connecter à votre compte Zamazor." : "Welcome back! Please sign in to your Zamazor account."}
 						</p>
 					</div>
 

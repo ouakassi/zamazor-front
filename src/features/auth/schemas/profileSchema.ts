@@ -6,7 +6,7 @@ export const profileSchema = z.object({
 	city: z.string().optional(),
 	zip: z.string().optional(),
 	phone: z.string().optional(),
-	country: z.string().optional().default("Morocco"),
+	country: z.string().min(1, "Country is required"),
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;

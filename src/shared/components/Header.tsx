@@ -17,10 +17,10 @@ import {
 import { OriginButton } from "@/shared/components/ui/origin-button";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
-import { useAuthStore, clearAuth } from "@/features/auth/stores/authStore";
+import { useAuthStore } from "@/features/auth/stores/authStore";
 import { AuthStatus } from "@/features/auth/types";
-import { authService } from "@/features/auth/services/authService";
 import { productService } from "@/features/products/services/productService";
+import type { Product } from "@/core/config/productsData";
 import {
 	DumbbellIcon,
 	LeafIcon,
@@ -100,7 +100,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 			prevCountRef.current = cartCount;
 		}, [cartCount]);
 
-		const [suggestions, setSuggestions] = React.useState<any[]>([]);
+		const [suggestions, setSuggestions] = React.useState<Product[]>([]);
 		const [showSuggestions, setShowSuggestions] = React.useState(false);
 		const [showMobileSuggestions, setShowMobileSuggestions] = React.useState(false);
 		const [loadingSuggestions, setLoadingSuggestions] = React.useState(false);
@@ -159,16 +159,6 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 				setShowMobileSuggestions(false);
 				navigate(`${APP_ROUTES.SHOP}?search=${encodeURIComponent(searchVal.trim())}`);
 			}
-		};
-
-		const handleLogout = async () => {
-			try {
-				await authService.logout();
-			} catch (e) {
-				console.error("Logout API call failed, clearing auth locally:", e);
-				clearAuth();
-			}
-			navigate(APP_ROUTES.HOME);
 		};
 
 		return (

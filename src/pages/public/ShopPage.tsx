@@ -18,10 +18,15 @@ import {
 } from "lucide-react";
 import { useProductStore } from "@/features/products/stores/productStore";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
-import { productService } from "@/features/products/services/productService";
+import {
+	productService,
+	type BackendCategory,
+} from "@/features/products/services/productService";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { APP_ROUTES } from "@/core/routes/paths";
+import { useLanguage } from "@/shared/context/LanguageContext";
+import type { Product } from "@/core/config/productsData";
 
 
 type PriceFilter = "all" | "under-25" | "25-40" | "over-40";
@@ -30,46 +35,55 @@ type SortOption = "name-asc" | "price-asc" | "price-desc";
 export const ShopPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language, t } = useLanguage();
 	const addItem = useCartStore((state) => state.addItem);
 	const addBookmark = useBookmarkStore((state) => state.addBookmark);
 	const removeBookmark = useBookmarkStore((state) => state.removeBookmark);
 	const isBookmarked = useBookmarkStore((state) => state.isBookmarked);
-	const { fetchProducts } = useProductStore();
+	const { fetchProducts, products, loading: productsLoading } = useProductStore();
 	const user = useAuthStore((state) => state.user);
 
-	useDocumentTitle("Shop Clean Supplement Formulas | Zamazor");
+	const getCategoryLabel = (cat: string) => {
+		if (cat === "All") return t("shop.filterCategory");
+		if (cat === "Protein") return t("homepage.categories.protein");
+		if (cat === "Greens") return t("homepage.categories.greens");
+		if (cat === "Energy") return t("homepage.categories.energy");
+		if (cat === "Recovery") return t("homepage.categories.recovery");
+		if (cat === "Wellness") return t("homepage.categories.wellness");
+		return cat;
+	};
 
-	const [apiProducts, setApiProducts] = useState<any[]>([]);
+	useDocumentTitle(`${t("shop.title")} | Zamazor`);
+
+	const [apiProducts, setApiProducts] = useState<Product[]>([]);
 	const [loadingSearch, setLoadingSearch] = useState(false);
 	const [dbCategories, setDbCategories] = useState<string[]>(["All", "Protein", "Greens", "Energy", "Recovery", "Immunity", "Wellness"]);
+
+	useEffect(() => {
+		void fetchProducts();
+	}, [fetchProducts]);
 
 	// Fetch categories from database on mount
 	useEffect(() => {
 		const fetchCategoriesList = async () => {
 			try {
 				const cats = await productService.getCategories();
-				if (cats && cats.length > 0) {
-					const normalizedCats = cats.map((c) => {
-						if (c.label === "Proteins") return "Protein";
-						if (c.label === "Vitamins & Minerals") return "Greens";
-						if (c.label === "Pre-Workout & Energy") return "Energy";
-						if (c.label === "Performance & Recovery") return "Recovery";
-						if (c.label === "Health & Wellness") return "Wellness";
-						return c.label;
-					});
-					setDbCategories(["All", ...Array.from(new Set(normalizedCats))]);
-				}
-			} catch (err) {
-				console.warn("Failed to fetch database categories, using static fallback:", err);
+				const formatted = ["All", ...cats.map((c: BackendCategory) => c.label)];
+				setDbCategories(formatted);
+			} catch (error) {
+				console.error("Failed to fetch categories:", error);
 			}
 		};
 		fetchCategoriesList();
 	}, []);
 
 	// State variables for filtering & sorting
-	const initialParams = new URLSearchParams(location.search);
-	const [searchQuery, setSearchQuery] = useState(initialParams.get("search") || "");
-	const [selectedCategory, setSelectedCategory] = useState<string>(initialParams.get("category") || "All");
+	const searchParams = useMemo(
+		() => new URLSearchParams(location.search),
+		[location.search],
+	);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "All");
 	const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
 	const [selectedBadge, setSelectedBadge] = useState<string>("All");
 	const [sortBy, setSortBy] = useState<SortOption>("name-asc");
@@ -78,74 +92,74 @@ export const ShopPage = () => {
 	const ITEMS_PER_PAGE = 6;
 	const [currentPage, setCurrentPage] = useState(1);
 
-	const [prevSearch, setPrevSearch] = useState(location.search);
-	if (location.search !== prevSearch) {
-		setPrevSearch(location.search);
-		const searchParams = new URLSearchParams(location.search);
-		const categoryParam = searchParams.get("category");
-		const searchParam = searchParams.get("search");
-		setSelectedCategory(categoryParam || "All");
-		setSearchQuery(searchParam || "");
-	}
-
-	// Reset to first page when query or filters change
+	// Fetch products on search query or category/filter change
 	useEffect(() => {
-		setCurrentPage(1);
-	}, [searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
-
-	// Load products or search results from the API
-	useEffect(() => {
-		const loadProducts = async () => {
+		const loadSearchProducts = async () => {
+			if (searchQuery.trim() === "") {
+				setApiProducts([]);
+				return;
+			}
 			setLoadingSearch(true);
 			try {
-				if (searchQuery.trim() === "") {
-					const allProds = await fetchProducts(true);
-					setApiProducts(allProds);
-				} else {
-					const results = await productService.searchProducts(searchQuery);
-					setApiProducts(results);
-				}
-			} catch (err) {
-				console.error("Failed to load products:", err);
+				const results = await productService.searchProducts(searchQuery);
+				setApiProducts(results);
+			} catch (error) {
+				console.error("Failed search query:", error);
 			} finally {
 				setLoadingSearch(false);
 			}
 		};
+		loadSearchProducts();
+	}, [searchQuery]);
 
-		const delayDebounce = setTimeout(() => {
-			loadProducts();
-		}, searchQuery.trim() === "" ? 0 : 350);
+	// Sync categories if route state changes
+	useEffect(() => {
+		const categoryParam = searchParams.get("category");
+		queueMicrotask(() => {
+			setSelectedCategory(categoryParam || "All");
+			setCurrentPage(1);
+		});
+	}, [searchParams]);
 
-		return () => clearTimeout(delayDebounce);
-	}, [searchQuery, fetchProducts]);
+	// Reset to first page when query or filters change
+	useEffect(() => {
+		queueMicrotask(() => setCurrentPage(1));
+	}, [searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
 
 	// Get all unique badges/goals for the dropdown filter
 	const uniqueBadges = useMemo(() => {
+		const source = searchQuery.trim() !== "" ? apiProducts : products;
 		const badgesSet = new Set<string>();
-		apiProducts.forEach((p) => {
+		source.forEach((p) => {
 			if (p.badge) badgesSet.add(p.badge);
 		});
 		return ["All", ...Array.from(badgesSet)];
-	}, [apiProducts]);
+	}, [apiProducts, products, searchQuery]);
 
 	// Filter & Sort Logic
 	const filteredProducts = useMemo(() => {
-		let result = [...apiProducts];
+		let result = searchQuery.trim() !== "" ? apiProducts : products;
 
 		// 2. Filter by Category
 		if (selectedCategory !== "All") {
 			result = result.filter((p) => p.category === selectedCategory);
 		}
 
-		// 3. Filter by Price Range
-		if (priceFilter !== "all") {
+		// 3. Filter by Price
+		if (priceFilter === "under-25") {
 			result = result.filter((p) => {
-				const priceStr = typeof p.price === "string" ? p.price : "";
-				const priceNum = parseFloat(priceStr.replace(/[^0-9.]/g, "")) || 0;
-				if (priceFilter === "under-25") return priceNum < 25;
-				if (priceFilter === "25-40") return priceNum >= 25 && priceNum <= 40;
-				if (priceFilter === "over-40") return priceNum > 40;
-				return true;
+				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
+				return numeric < 25;
+			});
+		} else if (priceFilter === "25-40") {
+			result = result.filter((p) => {
+				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
+				return numeric >= 25 && numeric <= 40;
+			});
+		} else if (priceFilter === "over-40") {
+			result = result.filter((p) => {
+				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
+				return numeric > 40;
 			});
 		}
 
@@ -154,23 +168,34 @@ export const ShopPage = () => {
 			result = result.filter((p) => p.badge === selectedBadge);
 		}
 
-		// 5. Sort Products
-		result.sort((a, b) => {
-			const priceStrA = typeof a.price === "string" ? a.price : "";
-			const priceStrB = typeof b.price === "string" ? b.price : "";
-			const priceA = parseFloat(priceStrA.replace(/[^0-9.]/g, "")) || 0;
-			const priceB = parseFloat(priceStrB.replace(/[^0-9.]/g, "")) || 0;
-
-			if (sortBy === "price-asc") return priceA - priceB;
-			if (sortBy === "price-desc") return priceB - priceA;
-			// Default Name Alphabetical (name-asc)
-			return a.name.localeCompare(b.name);
-		});
+		// 5. Sort
+		result = [...result];
+		if (sortBy === "name-asc") {
+			result.sort((a, b) => a.name.localeCompare(b.name));
+		} else if (sortBy === "price-asc") {
+			result.sort((a, b) => {
+				const pA = parseFloat(a.price.replace(/[^\d.]/g, ""));
+				const pB = parseFloat(b.price.replace(/[^\d.]/g, ""));
+				return pA - pB;
+			});
+		} else if (sortBy === "price-desc") {
+			result.sort((a, b) => {
+				const pA = parseFloat(a.price.replace(/[^\d.]/g, ""));
+				const pB = parseFloat(b.price.replace(/[^\d.]/g, ""));
+				return pB - pA;
+			});
+		}
 
 		return result;
-	}, [apiProducts, searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
+	}, [apiProducts, products, searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
 
-	const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+	const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+
+	useEffect(() => {
+		queueMicrotask(() => {
+			setCurrentPage((page) => Math.min(page, totalPages));
+		});
+	}, [totalPages]);
 
 	const paginatedProducts = useMemo(() => {
 		const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -178,11 +203,13 @@ export const ShopPage = () => {
 	}, [filteredProducts, currentPage]);
 
 	const countMessage = useMemo(() => {
-		if (filteredProducts.length === 0) return "Showing 0 clean formulas";
+		if (filteredProducts.length === 0) return language === "fr" ? "Affichage de 0 formules propres" : "Showing 0 clean formulas";
 		const start = (currentPage - 1) * ITEMS_PER_PAGE;
 		const end = Math.min(start + ITEMS_PER_PAGE, filteredProducts.length);
-		return `Showing ${start + 1}–${end} of ${filteredProducts.length} clean formulas`;
-	}, [filteredProducts.length, currentPage]);
+		return language === "fr" 
+			? `Affichage de ${start + 1}–${end} sur ${filteredProducts.length} formules propres`
+			: `Showing ${start + 1}–${end} of ${filteredProducts.length} clean formulas`;
+	}, [filteredProducts.length, currentPage, language]);
 
 	const handleResetFilters = () => {
 		setSearchQuery("");
@@ -191,7 +218,7 @@ export const ShopPage = () => {
 		setSelectedBadge("All");
 		setSortBy("name-asc");
 		setCurrentPage(1);
-		toast.info("Filters cleared successfully.");
+		toast.info(language === "fr" ? "Filtres réinitialisés." : "Filters cleared successfully.");
 	};
 
 	return (
@@ -200,12 +227,12 @@ export const ShopPage = () => {
 				{/* Shop Banner */}
 				<section className="bg-emerald-950 text-white py-16 sm:py-20 mt-4 rounded-b-[3rem] text-center px-4">
 					<div className="max-w-3xl mx-auto">
-						<p className="text-xs font-bold uppercase tracking-widest text-lime-300">Clean supplements</p>
+						<p className="text-xs font-bold uppercase tracking-widest text-lime-300">{t("homepage.hero.badge1")}</p>
 						<h1 className="mt-3 text-4xl sm:text-5xl font-playfair font-normal leading-tight">
-							The Complete Formula Shop
+							{t("shop.title")}
 						</h1>
 						<p className="mt-4 max-w-xl mx-auto text-sm sm:text-base text-emerald-50/80 leading-relaxed font-sans">
-							Scientifically formulated stacks designed to align with your training, energy, and recovery routines. Naturally sweetened, transparently detailed.
+							{t("shop.desc")}
 						</p>
 					</div>
 				</section>
@@ -217,18 +244,18 @@ export const ShopPage = () => {
 						<aside className="hidden lg:block space-y-6">
 							{/* Filter heading */}
 							<div className="flex items-center justify-between border-b border-slate-100 pb-4">
-								<h3 className="font-playfair text-lg font-bold text-slate-900">Filters</h3>
+								<h3 className="font-playfair text-lg font-bold text-slate-900">{language === "fr" ? "Filtres" : "Filters"}</h3>
 								<button
 									onClick={handleResetFilters}
 									className="text-xs font-bold text-emerald-800 hover:text-emerald-950 cursor-pointer"
 								>
-									Clear all
+									{language === "fr" ? "Réinitialiser" : "Clear all"}
 								</button>
 							</div>
 
 							{/* Search input */}
 							<div className="space-y-2">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Search</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{t("common.search")}</label>
 								<div className="relative">
 									<SearchIcon className="absolute left-3 top-3 size-4 text-slate-400" />
 									<Input
@@ -243,7 +270,7 @@ export const ShopPage = () => {
 
 							{/* Categories Filter */}
 							<div className="space-y-2.5">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Category</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === "fr" ? "Catégorie" : "Category"}</label>
 								<div className="flex flex-col gap-1.5">
 									{dbCategories.map((cat) => (
 										<button
@@ -256,7 +283,7 @@ export const ShopPage = () => {
 													: "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
 											)}
 										>
-											<span>{cat}</span>
+											<span>{getCategoryLabel(cat)}</span>
 											{selectedCategory === cat && <Check className="size-3.5 text-emerald-800" />}
 										</button>
 									))}
@@ -265,13 +292,13 @@ export const ShopPage = () => {
 
 							{/* Price Range Filter */}
 							<div className="space-y-2.5">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Price Range</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === "fr" ? "Gamme de prix" : "Price Range"}</label>
 								<div className="flex flex-col gap-1.5">
 									{[
-										{ id: "all", label: "All Prices" },
-										{ id: "under-25", label: "Under 25 MAD" },
-										{ id: "25-40", label: "25 to 40 MAD" },
-										{ id: "over-40", label: "Over 40 MAD" }
+										{ id: "all", label: language === "fr" ? "Tous les prix" : "All Prices" },
+										{ id: "under-25", label: language === "fr" ? "Moins de 25 MAD" : "Under 25 MAD" },
+										{ id: "25-40", label: language === "fr" ? "25 à 40 MAD" : "25 to 40 MAD" },
+										{ id: "over-40", label: language === "fr" ? "Plus de 40 MAD" : "Over 40 MAD" }
 									].map((opt) => (
 										<button
 											key={opt.id}
@@ -367,9 +394,9 @@ export const ShopPage = () => {
 											onChange={(e) => setSortBy(e.target.value as SortOption)}
 											className="h-10 rounded-xl border border-emerald-900/10 bg-white px-3 py-1 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-800 cursor-pointer shadow-xs"
 										>
-											<option value="name-asc">Alphabetical (A-Z)</option>
-											<option value="price-asc">Price: Low to High</option>
-											<option value="price-desc">Price: High to Low</option>
+											<option value="name-asc">{t("shop.sortName")}</option>
+											<option value="price-asc">{t("shop.sortPriceLow")}</option>
+											<option value="price-desc">{t("shop.sortPriceHigh")}</option>
 										</select>
 									</div>
 								</div>
@@ -378,7 +405,7 @@ export const ShopPage = () => {
 							{/* Active filter badges display */}
 							{(selectedCategory !== "All" || priceFilter !== "all" || selectedBadge !== "All" || searchQuery !== "") && (
 								<div className="flex flex-wrap gap-2 items-center">
-									<span className="text-xs font-bold text-slate-400 mr-1 uppercase">Active filters:</span>
+									<span className="text-xs font-bold text-slate-400 mr-1 uppercase">{language === "fr" ? "Filtres actifs:" : "Active filters:"}</span>
 									{searchQuery && (
 										<span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-slate-200">
 											"{searchQuery}"
@@ -407,7 +434,7 @@ export const ShopPage = () => {
 							)}
 
 							{/* Product Grid */}
-							{loadingSearch ? (
+							{loadingSearch || (productsLoading && products.length === 0 && searchQuery.trim() === "") ? (
 								<div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
 									{[...Array(6)].map((_, i) => (
 										<div key={i} className="rounded-3xl border border-emerald-950/5 bg-white p-4 shadow-sm animate-pulse space-y-4">
@@ -477,7 +504,7 @@ export const ShopPage = () => {
 															className="absolute left-3 bottom-3 z-10 bg-emerald-900 hover:bg-emerald-950 text-white font-sans font-bold text-[10px] uppercase tracking-wider px-3 py-1 rounded-lg shadow-sm cursor-pointer transition-transform hover:scale-105"
 															title="Edit Product (Admin Panel)"
 														>
-															✏️ Edit
+															{language === "fr" ? "✏️ Modifier" : "✏️ Edit"}
 														</button>
 													)}
 													<img
@@ -488,7 +515,7 @@ export const ShopPage = () => {
 												</div>
 												<div className="mt-5 px-1">
 													<p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-														{product.category}
+														{getCategoryLabel(product.category)}
 													</p>
 													<div className="mt-2 flex items-baseline justify-between gap-2">
 														<h3 className="text-xl font-playfair font-semibold leading-tight text-slate-950">
@@ -505,12 +532,12 @@ export const ShopPage = () => {
 												onClick={(e) => {
 													e.stopPropagation();
 													addItem(product);
-													toast.success(`${product.name} added to cart!`);
+													toast.success(language === "fr" ? `${product.name} ajouté au panier !` : `${product.name} added to cart!`);
 												}}
 												className="mt-5 w-full h-11 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
 											>
 												<ShoppingBagIcon className="size-3.5" />
-												Add to cart
+												{t("common.addToCart")}
 											</OriginButton>
 										</div>
 									))}
@@ -571,7 +598,7 @@ export const ShopPage = () => {
 						<div>
 							{/* Modal Header */}
 							<div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
-								<h3 className="font-playfair text-lg font-bold text-slate-900">Filters</h3>
+								<h3 className="font-playfair text-lg font-bold text-slate-900">{language === "fr" ? "Filtres" : "Filters"}</h3>
 								<button
 									onClick={() => setMobileFiltersOpen(false)}
 									className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
@@ -582,7 +609,7 @@ export const ShopPage = () => {
 
 							{/* Search input mobile */}
 							<div className="space-y-2 mb-6">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Search</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{t("common.search")}</label>
 								<div className="relative">
 									<SearchIcon className="absolute left-3 top-3 size-4 text-slate-400" />
 									<Input
@@ -597,7 +624,7 @@ export const ShopPage = () => {
 
 							{/* Categories Filter mobile */}
 							<div className="space-y-2.5 mb-6">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Category</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === "fr" ? "Catégorie" : "Category"}</label>
 								<div className="flex flex-wrap gap-1.5">
 									{dbCategories.map((cat) => (
 										<button
@@ -610,7 +637,7 @@ export const ShopPage = () => {
 													: "bg-white text-emerald-800 border-emerald-900/10 hover:bg-emerald-50"
 											)}
 										>
-											{cat}
+											{getCategoryLabel(cat)}
 										</button>
 									))}
 								</div>
@@ -618,13 +645,13 @@ export const ShopPage = () => {
 
 							{/* Price Range Filter mobile */}
 							<div className="space-y-2.5 mb-6">
-								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">Price Range</label>
+								<label className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === "fr" ? "Gamme de prix" : "Price Range"}</label>
 								<div className="flex flex-wrap gap-1.5">
 									{[
-										{ id: "all", label: "All Prices" },
-										{ id: "under-25", label: "Under 25 MAD" },
-										{ id: "25-40", label: "25 to 40 MAD" },
-										{ id: "over-40", label: "Over 40 MAD" }
+										{ id: "all", label: language === "fr" ? "Tous les prix" : "All Prices" },
+										{ id: "under-25", label: language === "fr" ? "Moins de 25 MAD" : "Under 25 MAD" },
+										{ id: "25-40", label: language === "fr" ? "25 à 40 MAD" : "25 to 40 MAD" },
+										{ id: "over-40", label: language === "fr" ? "Plus de 40 MAD" : "Over 40 MAD" }
 									].map((opt) => (
 										<button
 											key={opt.id}
@@ -649,13 +676,13 @@ export const ShopPage = () => {
 								variant="outline"
 								className="w-full h-11 rounded-xl border-emerald-900/15 text-emerald-800 font-bold"
 							>
-								Clear Filters
+								{language === "fr" ? "Réinitialiser" : "Clear Filters"}
 							</Button>
 							<Button
 								onClick={() => setMobileFiltersOpen(false)}
 								className="w-full h-11 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl"
 							>
-								Show Results ({filteredProducts.length})
+								{language === "fr" ? `Afficher les résultats (${filteredProducts.length})` : `Show Results (${filteredProducts.length})`}
 							</Button>
 						</div>
 					</div>

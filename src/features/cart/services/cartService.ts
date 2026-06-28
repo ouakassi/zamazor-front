@@ -2,6 +2,7 @@ import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { isSystemError } from "@/shared/types";
 import { type Product } from "@/core/config/productsData";
 import { productService } from "@/features/products/services/productService";
+import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 
 export interface BackendCartItem {
 	id: string; // cart item ID
@@ -19,16 +20,31 @@ export interface BackendCart {
 	items: BackendCartItem[];
 }
 
+function isMissingCartError(error: unknown) {
+	return (
+		isSystemError(error) &&
+		error.status === 404 &&
+		error.title.toLowerCase().includes("cart")
+	);
+}
+
 export const cartService = {
 	getCart: async (): Promise<{ product: Product; quantity: number }[] | null> => {
 		try {
-			const response = await privateApiRequest<BackendCart>({
-				url: "/carts",
-				method: "GET",
-			});
+			const response = await privateApiRequest<BackendCart>(
+				{
+					url: API_ENDPOINTS.CARTS.ROOT,
+					method: "GET",
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(response)) {
-				console.warn("Cart API returned system error, using client-side cart fallback.");
+				if (!isMissingCartError(response)) {
+					console.warn(
+						"Cart API returned system error, using client-side cart fallback.",
+					);
+				}
 				return null;
 			}
 
@@ -62,11 +78,14 @@ export const cartService = {
 
 	addToCart: async (productId: string, quantity: number): Promise<boolean> => {
 		try {
-			const response = await privateApiRequest<unknown>({
-				url: "/carts/items",
-				method: "POST",
-				data: { productId, quantity },
-			});
+			const response = await privateApiRequest<unknown>(
+				{
+					url: API_ENDPOINTS.CARTS.ITEMS,
+					method: "POST",
+					data: { productId, quantity },
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(response)) {
 				console.warn("Failed to add to API cart, operating in local-only mode.");
@@ -83,10 +102,13 @@ export const cartService = {
 	removeFromCart: async (productId: string): Promise<boolean> => {
 		try {
 			// First get cart to resolve the itemId for this productId
-			const cart = await privateApiRequest<BackendCart>({
-				url: "/carts",
-				method: "GET",
-			});
+			const cart = await privateApiRequest<BackendCart>(
+				{
+					url: API_ENDPOINTS.CARTS.ROOT,
+					method: "GET",
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(cart) || !cart || !cart.items) {
 				return false;
@@ -98,10 +120,13 @@ export const cartService = {
 				return false;
 			}
 
-			const response = await privateApiRequest<unknown>({
-				url: `/carts/items/${item.id}`,
-				method: "DELETE",
-			});
+			const response = await privateApiRequest<unknown>(
+				{
+					url: API_ENDPOINTS.CARTS.ITEM_DETAILS(item.id),
+					method: "DELETE",
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(response)) {
 				console.warn("Failed to remove item from API cart, operating in local-only mode.");
@@ -117,11 +142,14 @@ export const cartService = {
 
 	updateCartItemQuantity: async (productId: string, quantity: number): Promise<boolean> => {
 		try {
-			const response = await privateApiRequest<unknown>({
-				url: `/carts/items/${productId}`,
-				method: "PUT",
-				data: { quantity },
-			});
+			const response = await privateApiRequest<unknown>(
+				{
+					url: API_ENDPOINTS.CARTS.ITEM_DETAILS(productId),
+					method: "PATCH",
+					data: { quantity },
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(response)) {
 				console.warn("Failed to update cart item quantity on API, operating in local-only mode.");
@@ -137,10 +165,13 @@ export const cartService = {
 
 	clearCart: async (): Promise<boolean> => {
 		try {
-			const response = await privateApiRequest<unknown>({
-				url: "/carts",
-				method: "DELETE",
-			});
+			const response = await privateApiRequest<unknown>(
+				{
+					url: API_ENDPOINTS.CARTS.ROOT,
+					method: "DELETE",
+				},
+				{ ignoreErrors: true },
+			);
 
 			if (isSystemError(response)) {
 				console.warn("Failed to clear cart on API, operating in local-only mode.");

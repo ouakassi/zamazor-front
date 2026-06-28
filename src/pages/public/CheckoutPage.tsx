@@ -13,6 +13,7 @@ import logo from "@/assets/images/zamazor.svg";
 import { toast } from "sonner";
 import { orderService } from "@/features/orders/services/orderService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
+import { useLanguage } from "@/shared/context/LanguageContext";
 import {
 	ArrowLeft,
 	CreditCard,
@@ -28,6 +29,7 @@ import {
 export const CheckoutPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language, t } = useLanguage();
 	const items = useCartStore((state) => state.items);
 	const clearCart = useCartStore((state) => state.clearCart);
 	const subtotal = useCartStore((state) => state.subtotal());
@@ -95,11 +97,11 @@ export const CheckoutPage = () => {
 		}
 	}, [user, setValue]);
 
-	useDocumentTitle("Secure Checkout | Zamazor");
+	useDocumentTitle(`${t("checkout.title")} | Zamazor`);
 
 	// Calculations
 	const discountAmount = subtotal * (discountPercentage / 100);
-	const shippingCost = 0;
+	const shippingCost: number = 0;
 	const orderTotal = subtotal - discountAmount;
 
 	const handleCheckoutSubmit = async (data: CheckoutFormValues) => {
@@ -112,6 +114,7 @@ export const CheckoutPage = () => {
 				country: "Morocco",
 				city: data.city,
 				street: `${data.address}, Phone: ${data.phone}`,
+				phone: data.phone,
 				isDefault: true,
 			});
 
@@ -126,12 +129,13 @@ export const CheckoutPage = () => {
 			}
 
 			setIsSubmitting(false);
+			clearCart();
 			setIsSuccess(true);
 			setOrderNumber(response.id.slice(0, 8).toUpperCase());
-			toast.success("Order placed successfully!");
+			toast.success(language === "fr" ? "Commande passée avec succès !" : "Order placed successfully!");
 		} catch {
 			setIsSubmitting(false);
-			toast.error("An error occurred while placing your order. Please try again.");
+			toast.error(language === "fr" ? "Une erreur s'est produite lors de la commande." : "An error occurred while placing your order. Please try again.");
 		}
 	};
 
@@ -144,10 +148,10 @@ export const CheckoutPage = () => {
 		return (
 			<div className="flex min-h-screen flex-col items-center justify-center bg-[#fcfdfa] p-4 text-center">
 				<ShoppingBag className="size-16 text-emerald-900/25 mb-4" />
-				<h1 className="text-3xl font-playfair text-slate-900">Your checkout is empty</h1>
-				<p className="mt-2 text-slate-500">There are no items in your cart to checkout.</p>
+				<h1 className="text-3xl font-playfair text-slate-900">{language === "fr" ? "Votre panier est vide" : "Your checkout is empty"}</h1>
+				<p className="mt-2 text-slate-500">{language === "fr" ? "Il n'y a aucun article dans votre panier." : "There are no items in your cart to checkout."}</p>
 				<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl">
-					<Link to={APP_ROUTES.HOME}>Browse formulas</Link>
+					<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 				</Button>
 			</div>
 		);
@@ -158,36 +162,36 @@ export const CheckoutPage = () => {
 			<div className="min-h-screen bg-[#fcfdfa] flex flex-col items-center justify-center p-4">
 				<div className="max-w-md w-full bg-white rounded-3xl border border-emerald-900/10 p-6 sm:p-8 text-center shadow-xl shadow-emerald-950/5">
 					<CheckCircle2 className="size-16 text-emerald-600 mx-auto mb-5 animate-pulse" />
-					<h1 className="text-3xl font-playfair font-normal text-slate-950">Thank you for your order!</h1>
+					<h1 className="text-3xl font-playfair font-normal text-slate-950">{t("checkout.successTitle")}</h1>
 					<p className="text-sm text-slate-500 mt-2">
-						Your clean stack order has been successfully placed. We've sent a receipt details and updates to <strong className="text-slate-700">{getValues("email")}</strong>.
+						{language === "fr" ? "Votre commande de compléments propres a été passée avec succès. Les détails ont été envoyés à " : "Your clean stack order has been successfully placed. We've sent a receipt details and updates to "}<strong className="text-slate-700">{getValues("email")}</strong>.
 					</p>
 
 					<div className="my-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-900/5 text-left text-sm space-y-2">
 						<div className="flex justify-between">
-							<span className="text-slate-500">Order Number:</span>
+							<span className="text-slate-500">{t("checkout.orderNumber")}:</span>
 							<span className="font-mono font-bold text-slate-900">{orderNumber}</span>
 						</div>
 						<div className="flex justify-between">
-							<span className="text-slate-500">Delivery Method:</span>
-							<span className="font-bold text-slate-900">Standard Insured (3-5 days)</span>
+							<span className="text-slate-500">{t("checkout.delivery")}:</span>
+							<span className="font-bold text-slate-900">{t("checkout.standardShipping")}</span>
 						</div>
 						<div className="flex justify-between">
-							<span className="text-slate-500">Order Total:</span>
+							<span className="text-slate-500">{language === "fr" ? "Total de la commande:" : "Order Total:"}</span>
 							<span className="font-extrabold text-emerald-900">{orderTotal.toFixed(2)} MAD</span>
 						</div>
 					</div>
 
 					<div className="flex items-center gap-2 justify-center text-xs text-emerald-800 font-bold uppercase tracking-wider mb-6">
 						<Sparkles className="size-4 animate-spin-slow text-emerald-700" />
-						<span>Consistency starts now</span>
+						<span>{language === "fr" ? "La régularité commence maintenant" : "Consistency starts now"}</span>
 					</div>
 
 					<Button
 						onClick={handleSuccessReturn}
 						className="w-full h-12 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl cursor-pointer shadow-md"
 					>
-						Return to homepage
+						{t("checkout.returnHome")}
 					</Button>
 				</div>
 			</div>
@@ -241,11 +245,11 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">1</span>
-									Contact Information
+									{t("checkout.step1")}
 								</h2>
 								<div className="space-y-3">
 									<div>
-										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Email address</label>
+										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.email")}</label>
 										<Input
 											type="email"
 											placeholder="you@example.com"
@@ -263,12 +267,12 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">2</span>
-									Shipping Details
+									{t("checkout.step2")}
 								</h2>
 								<div className="space-y-3">
 									<div className="grid grid-cols-2 gap-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">First name</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.firstName")}</label>
 											<Input
 												type="text"
 												placeholder="John"
@@ -280,7 +284,7 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Last name</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.lastName")}</label>
 											<Input
 												type="text"
 												placeholder="Doe"
@@ -294,7 +298,7 @@ export const CheckoutPage = () => {
 									</div>
 
 									<div>
-										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Address line 1</label>
+										<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.address")}</label>
 										<Input
 											type="text"
 											placeholder="123 Wellness Way"
@@ -308,7 +312,7 @@ export const CheckoutPage = () => {
  
 									<div className="grid grid-cols-2 gap-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">City</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.city")}</label>
 											<Input
 												type="text"
 												placeholder="San Francisco"
@@ -320,7 +324,7 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Postal/ZIP Code</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.zip")}</label>
 											<Input
 												type="text"
 												placeholder="94103"
@@ -335,7 +339,7 @@ export const CheckoutPage = () => {
 
 									<div className="grid grid-cols-2 gap-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Phone Number</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.phone")}</label>
 											<Input
 												type="tel"
 												placeholder="+212 600-000000"
@@ -347,7 +351,7 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Country</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.country")}</label>
 											<Input
 												type="text"
 												value="Morocco"
@@ -364,20 +368,20 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">3</span>
-									Secure Payment
+									{t("checkout.step3")}
 								</h2>
 								<div className="space-y-4">
 									{/* Credit card tab header */}
 									<div className="flex gap-2 p-1.5 bg-[#f0f7ec] rounded-xl border border-emerald-900/10">
 										<button type="button" className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-emerald-900 text-white shadow-xs">
 											<CreditCard className="size-4" />
-											Credit Card
+											{language === "fr" ? "Carte Bancaire" : "Credit Card"}
 										</button>
 									</div>
 
 									<div className="space-y-3">
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Card number</label>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.card")}</label>
 											<Input
 												type="text"
 												placeholder="4111 2222 3333 4444"
@@ -391,7 +395,7 @@ export const CheckoutPage = () => {
  
 										<div className="grid grid-cols-2 gap-3">
 											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Expiry date</label>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.expiry")}</label>
 												<Input
 													type="text"
 													placeholder="MM/YY"
@@ -403,7 +407,7 @@ export const CheckoutPage = () => {
 												)}
 											</div>
 											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">CVV/CVC</label>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.cvv")}</label>
 												<Input
 													type="password"
 													maxLength={4}
@@ -428,11 +432,11 @@ export const CheckoutPage = () => {
 								className="w-full h-14 rounded-2xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/10 text-base"
 							>
 								{isSubmitting ? (
-									<span>Processing payment...</span>
+									<span>{t("checkout.submitting")}</span>
 								) : (
 									<>
 										<Lock className="size-4" />
-										Complete Order &bull; {orderTotal.toFixed(2)} MAD
+										{language === "fr" ? "Valider la Commande" : "Complete Order"} &bull; {orderTotal.toFixed(2)} MAD
 									</>
 								)}
 							</OriginButton>
@@ -442,7 +446,7 @@ export const CheckoutPage = () => {
 						<div className="space-y-4">
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-md shadow-emerald-950/5">
 								<h3 className="font-playfair text-lg font-bold text-slate-950 mb-4 border-b border-slate-100 pb-3">
-									Review Stack ({items.length})
+									{language === "fr" ? `Résumé de la commande (${items.length})` : `Review Stack (${items.length})`}
 								</h3>
 
 								{/* Items list */}

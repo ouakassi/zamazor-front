@@ -1,6 +1,6 @@
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { userSchema, type User } from "../schemas/userSchema";
-import { API_ENDPOINTS } from "@/core/routes/paths";
+import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 import { isSystemError } from "@/shared/types";
 import { clearAuth, useAuthStore } from "../stores/authStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
@@ -14,7 +14,7 @@ export const userService = {
 		);
 
 		if (isSystemError(response)) {
-			clearAuth()
+			clearAuth();
 			return null;
 		}
 		const parsed = userSchema.safeParse(response);
@@ -35,7 +35,7 @@ export const userService = {
 
 	getUserById: async (id: string): Promise<User | null> => {
 		const response = await privateApiRequest<User>({
-			url: `/users/${id}`,
+			url: API_ENDPOINTS.USERS.DETAILS(id),
 			method: "GET",
 		});
 
@@ -53,7 +53,7 @@ export const userService = {
 
 	updateCurrentUser: async (payload: { fullName: string; shippingAddress: string | null }): Promise<User | null> => {
 		const response = await privateApiRequest<User>({
-			url: "/users/me",
+			url: API_ENDPOINTS.USERS.ME,
 			method: "PUT",
 			data: payload,
 		});

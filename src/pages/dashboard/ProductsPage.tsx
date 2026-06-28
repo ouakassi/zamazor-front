@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
 import { productService } from "@/features/products/services/productService";
@@ -10,7 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Search, Plus, Trash2, Edit, ExternalLink, X } from "lucide-react";
+import { Search, Plus, Trash2, Edit, ExternalLink, X, RefreshCw, Package, Layers, AlertTriangle, BadgeDollarSign } from "lucide-react";
 
 export const ProductsPage = () => {
 	useDocumentTitle(`Products Management | ${CONFIG.APP_NAME}`);
@@ -39,9 +39,12 @@ export const ProductsPage = () => {
 	const [prodPrice, setProdPrice] = useState("");
 	const [prodStock, setProdStock] = useState("");
 	const [prodCategory, setProdCategory] = useState("");
+	const [newCategoryName, setNewCategoryName] = useState("");
+	const [categoryError, setCategoryError] = useState("");
 	const [prodImage, setProdImage] = useState<File | null>(null);
 	const [prodImagePreview, setProdImagePreview] = useState<string | null>(null);
 	const [prodSubmitting, setProdSubmitting] = useState(false);
+	const [categoryCreating, setCategoryCreating] = useState(false);
 
 	// Validation states
 	const [nameError, setNameError] = useState("");
@@ -80,8 +83,7 @@ export const ProductsPage = () => {
 		setProductPage(1);
 	};
 
-	const loadData = async () => {
-		setLoading(true);
+	const loadData = useCallback(async () => {
 		try {
 			const [prodsData, catsData] = await Promise.all([
 				fetchStoreProducts(true),
@@ -89,20 +91,19 @@ export const ProductsPage = () => {
 			]);
 			setProducts(prodsData);
 			setCategories(catsData);
-			if (catsData.length > 0 && !prodCategory) {
-				setProdCategory(catsData[0].id);
-			}
+			setProdCategory((current) => current || catsData[0]?.id || "");
 		} catch (error) {
 			console.error("Failed to load dashboard products data:", error);
 			toast.error("Failed to refresh product data.");
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [fetchStoreProducts]);
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		loadData();
-	}, []);
+	}, [loadData]);
 
 	const showConfirm = (title: string, desc: string, action: () => void, isDestructive = false, confirmText = "Continue") => {
 		setConfirmTitle(title);
@@ -120,6 +121,8 @@ export const ProductsPage = () => {
 		setProdPrice("");
 		setProdStock("");
 		setProdCategory(categories[0]?.id || "");
+		setNewCategoryName("");
+		setCategoryError("");
 		setProdImage(null);
 		setProdImagePreview(null);
 		setEditingProduct(null);
@@ -140,9 +143,9 @@ export const ProductsPage = () => {
 	const openEditProductModal = (product: Product) => {
 		setEditingProduct(product);
 		setProdName(product.name);
-		setProdDesc(product.flavor || ""); 
+		setProdDesc(product.description || product.flavor || "");
 		setProdPrice(product.price.replace(/[^0-9.]/g, ""));
-		setProdStock(product.stock !== undefined ? String(product.stock) : "100"); 
+		setProdStock(product.stock !== undefined ? String(product.stock) : "100");
 
 		const matchCat = categories.find(c => c.label.toLowerCase() === product.category.toLowerCase());
 		setProdCategory(matchCat ? matchCat.id : categories[0]?.id || "");
@@ -151,7 +154,87 @@ export const ProductsPage = () => {
 		setIsProductModalOpen(true);
 	};
 
-	const handleProductSubmit = async (e: React.FormEvent) => {
+	const appendImageForSubmit = async (formData: FormData) => {
+		if (prodImage) {
+			formData.append("image", prodImage);
+			return;
+		}
+
+		if (!editingProduct || !prodImagePreview) {
+			return;
+		}
+
+		try {
+			const response = await fetch(prodImagePreview);
+			if (!response.ok) return;
+
+			const blob = await response.blob();
+			const extension = blob.type.includes("png")
+				? "png"
+				: blob.type.includes("webp")
+					? "webp"
+					: "jpg";
+			const file = new File([blob], `product-image.${extension}`, { type: blob.type || "image/jpeg" });
+			formData.append("image", file);
+		} catch (error) {
+			console.warn("Failed to preserve existing product image during update:", error);
+		}
+	};
+
+	const createCategoryNow = async () => {
+		const label = newCategoryName.trim();
+		if (!label) {
+			setCategoryError("Category name is required.");
+			return;
+		}
+
+		const duplicate = categories.some((cat) => cat.label.toLowerCase() === label.toLowerCase());
+		if (duplicate) {
+			setCategoryError("That category already exists.");
+			return;
+		}
+
+		setCategoryCreating(true);
+		try {
+			const created = await productService.createCategory(label);
+			if (!created) {
+				toast.error("Failed to create category.");
+				return;
+			}
+
+			setCategories((current) => {
+				if (current.some((cat) => cat.id === created.id)) {
+					return current;
+				}
+				return [...current, created];
+			});
+			setProdCategory(created.id);
+			setNewCategoryName("");
+			setCategoryError("");
+			toast.success("Category created successfully.");
+		} catch (error) {
+			console.error("Category creation failed:", error);
+			toast.error("An error occurred while creating the category.");
+		} finally {
+			setCategoryCreating(false);
+		}
+	};
+
+	const promptCreateCategory = () => {
+		showConfirm(
+			"Create Category",
+			newCategoryName.trim()
+				? `Do you want to create the category "${newCategoryName.trim()}" and assign it to this product?`
+				: "Do you want to create this category and assign it to this product?",
+			() => {
+				void createCategoryNow();
+			},
+			false,
+			"Create Category",
+		);
+	};
+
+	const handleProductSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		
 		let hasErrors = false;
@@ -203,11 +286,9 @@ export const ProductsPage = () => {
 			formData.append("price", parseFloat(prodPrice).toFixed(2));
 			formData.append("stockQuantity", String(parseInt(prodStock) || 0));
 			formData.append("categoryId", prodCategory);
-			if (prodImage) {
-				formData.append("image", prodImage);
-			}
+			await appendImageForSubmit(formData);
 
-			let result = false;
+			let result: Product | null = null;
 			if (editingProduct) {
 				result = await productService.updateProduct(editingProduct.id, formData);
 				if (result) toast.success("Product updated successfully!");
@@ -287,6 +368,21 @@ export const ProductsPage = () => {
 		productPage * productsPerPage
 	);
 
+	const totalProducts = products.length;
+	const totalCategories = categories.length;
+	const lowStockProducts = useMemo(
+		() => products.filter((product) => typeof product.stock === "number" && product.stock <= 10),
+		[products],
+	);
+	const averagePrice = useMemo(() => {
+		if (products.length === 0) return 0;
+		const total = products.reduce((sum, product) => {
+			const price = parseFloat((product.price || "").replace(/[^0-9.]/g, "")) || 0;
+			return sum + price;
+		}, 0);
+		return total / products.length;
+	}, [products]);
+
 	if (loading && products.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
@@ -298,19 +394,89 @@ export const ProductsPage = () => {
 
 	return (
 		<div className="space-y-6">
-			{/* Sub-header controls */}
-			<div className="flex items-center justify-between gap-4">
-				<div className="space-y-0.5">
-					<h2 className="text-base font-semibold text-slate-900">Supplement Catalog</h2>
-					<p className="text-xs text-slate-500">Manage products, adjust prices, edit descriptions, and control inventory levels.</p>
+			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+				<div className="space-y-1">
+					<p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-800">Products</p>
+					<h2 className="text-2xl font-playfair text-slate-950 sm:text-3xl">Product list</h2>
+					<p className="max-w-2xl text-sm text-slate-500">Manage catalog, pricing, and stock.</p>
 				</div>
-				<Button
-					onClick={openNewProductModal}
-					className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl h-10 px-4 text-xs cursor-pointer shadow-sm flex items-center gap-1.5"
-				>
-					<Plus className="size-4" />
-					New Product
-				</Button>
+				<div className="flex flex-wrap gap-2">
+					<Button
+						variant="outline"
+						onClick={() => void loadData()}
+						className="h-10 rounded-xl border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 text-xs font-semibold"
+					>
+						<RefreshCw className="mr-1.5 size-4" />
+						Refresh
+					</Button>
+					<Button
+						onClick={openNewProductModal}
+						className="h-10 rounded-xl bg-emerald-900 px-4 text-xs font-semibold text-white hover:bg-emerald-950"
+					>
+						<Plus className="mr-1.5 size-4" />
+						New Product
+					</Button>
+				</div>
+			</div>
+
+			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				{[
+					{
+						label: "Total Products",
+						value: totalProducts.toString(),
+						tone: "bg-white text-slate-950",
+						ring: "ring-slate-200/70",
+						accent: "bg-slate-50",
+						iconColor: "text-slate-700",
+						icon: Package,
+					},
+					{
+						label: "Categories",
+						value: totalCategories.toString(),
+						tone: "bg-white text-slate-950",
+						ring: "ring-teal-100/70",
+						accent: "bg-teal-50",
+						iconColor: "text-teal-700",
+						icon: Layers,
+					},
+					{
+						label: "Low Stock",
+						value: lowStockProducts.length.toString(),
+						tone: "bg-white text-slate-950",
+						ring: "ring-amber-100/70",
+						accent: "bg-amber-50",
+						iconColor: "text-amber-700",
+						icon: AlertTriangle,
+					},
+					{
+						label: "Avg Price",
+						value: `${averagePrice.toFixed(2)} MAD`,
+						tone: "bg-white text-slate-950",
+						ring: "ring-lime-100/70",
+						accent: "bg-lime-50",
+						iconColor: "text-lime-700",
+						icon: BadgeDollarSign,
+					},
+				].map((metric) => {
+					const Icon = metric.icon;
+
+					return (
+						<div
+							key={metric.label}
+							className={`relative overflow-hidden rounded-3xl border border-white p-5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.45)] ring-1 ${metric.ring} ${metric.tone} transition-shadow hover:shadow-[0_20px_50px_-32px_rgba(15,23,42,0.5)]`}
+						>
+							<div className="flex items-start justify-between gap-4">
+								<div className="min-w-0">
+									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
+									<h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
+								</div>
+								<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ring-slate-200/70 ${metric.accent}`}>
+									<Icon className={`size-5 ${metric.iconColor}`} />
+								</div>
+							</div>
+						</div>
+					);
+				})}
 			</div>
 
 			<div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -551,7 +717,10 @@ export const ProductsPage = () => {
 				<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs">
 					<div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
 						<button
-							onClick={() => setIsProductModalOpen(false)}
+							onClick={() => {
+								resetProductForm();
+								setIsProductModalOpen(false);
+							}}
 							className="absolute top-4 right-4 size-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
 						>
 							<X className="size-4" />
@@ -589,8 +758,35 @@ export const ProductsPage = () => {
 											<option key={cat.id} value={cat.id}>
 												{cat.label}
 											</option>
-										))}
+											))}
 									</select>
+								</div>
+							</div>
+
+							<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+								<div className="space-y-1.5">
+									<label className="text-xs font-bold text-slate-600">Add New Category</label>
+									<Input
+										value={newCategoryName}
+										onChange={(e) => {
+											setNewCategoryName(e.target.value);
+											if (categoryError) setCategoryError("");
+										}}
+										placeholder="e.g. Immune Support"
+										className={`rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 ${categoryError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+									/>
+									{categoryError && <p className="text-[10px] font-semibold text-red-500 mt-0.5">{categoryError}</p>}
+								</div>
+								<div className="flex items-end">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={promptCreateCategory}
+										disabled={categoryCreating}
+										className="h-10 px-4 rounded-xl border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 font-semibold text-xs cursor-pointer"
+									>
+										{categoryCreating ? "Creating..." : "Add Category"}
+									</Button>
 								</div>
 							</div>
 
@@ -700,7 +896,10 @@ export const ProductsPage = () => {
 								<Button
 									type="button"
 									variant="ghost"
-									onClick={() => setIsProductModalOpen(false)}
+									onClick={() => {
+										resetProductForm();
+										setIsProductModalOpen(false);
+									}}
 									className="h-10 px-5 rounded-xl cursor-pointer font-semibold text-xs text-slate-700 hover:bg-slate-50"
 								>
 									Cancel

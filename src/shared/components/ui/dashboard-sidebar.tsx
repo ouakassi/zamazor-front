@@ -4,7 +4,8 @@ import {
   FolderKanban, 
   LogOut,
   ChevronRight,
-  Inbox
+  Inbox,
+  Home
 } from 'lucide-react';
 
 export type NavItemData = {
@@ -33,6 +34,7 @@ const mockNavGroups: NavGroupData[] = [
 ];
 
 const mockBottomItems: NavItemData[] = [
+  { id: 'store', title: 'Storefront', icon: Home },
   { id: 'logout', title: 'Log out', icon: LogOut },
 ];
 
@@ -158,14 +160,12 @@ export function SidebarNav({
   className = '',
   activeId,
   onSelect,
-  activeWorkspace,
-  onWorkspaceSelect
+  activeWorkspace
 }: { 
   className?: string,
   activeId?: string,
   onSelect?: (id: string) => void,
-  activeWorkspace?: string,
-  onWorkspaceSelect?: (ws: string) => void
+  activeWorkspace?: string
 }) {
   const [internalId, setInternalId] = useState('overview');
   const currentId = activeId !== undefined ? activeId : internalId;

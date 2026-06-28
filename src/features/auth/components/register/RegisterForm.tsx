@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	registerRequestSchema,
 	type RegisterRequest,
-	type RegisterApiRequest,
 } from "../../schemas/registerSchema";
 import { PasswordField } from "@/shared/components/fields/PasswordField";
 import { EmailField } from "@/shared/components/fields/EmailField";
@@ -13,21 +12,17 @@ import { isSystemError } from "@/shared/types";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { notify } from "@/lib/notify";
 import { NameField } from "@/shared/components/fields/NameField";
-import { BirthDateField } from "@/shared/components/fields/BirthDateField";
 import { OriginButton } from "@/shared/components/ui/origin-button";
+import { useLanguage } from "@/shared/context/LanguageContext";
 
 export const RegisterForm = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const { language } = useLanguage();
 	const from = location.state?.from;
 
 	const onSubmit = async (data: RegisterRequest) => {
-		const parsed = registerRequestSchema.parse(data);
-		const formattedDate = parsed.birthDate.toISOString().split("T")[0];
-		const payload: RegisterApiRequest = {
-			...parsed,
-			birthDate: formattedDate,
-		};
+		const payload = registerRequestSchema.parse(data);
 		const response = await authService.register(payload);
 		if (!isSystemError(response)) {
 			navigate(APP_ROUTES.AUTH.LOGIN, { state: { from } });
@@ -35,8 +30,8 @@ export const RegisterForm = () => {
 	};
 
 	const onError = () => {
-		notify.error("Validation Error", {
-			description: "Please fix the errors in the form.",
+		notify.error(language === "fr" ? "Erreur de validation" : "Validation Error", {
+			description: language === "fr" ? "Veuillez corriger les erreurs dans le formulaire." : "Please fix the errors in the form.",
 			requiresInternet: false,
 		});
 	};
@@ -44,7 +39,6 @@ export const RegisterForm = () => {
 	const {
 		register,
 		handleSubmit,
-		control,
 		formState: { errors, isSubmitting, isDirty },
 	} = useForm({
 		resolver: zodResolver(registerRequestSchema),
@@ -57,28 +51,21 @@ export const RegisterForm = () => {
 			className="space-y-4"
 		>
 			<NameField
-				label="Full Name"
-				name="name"
+				label={language === "fr" ? "Nom complet" : "Full Name"}
+				name="fullName"
 				errors={errors}
 				register={register}
 			/>
 
 			<EmailField
-				label="Email"
+				label={language === "fr" ? "Adresse e-mail" : "Email"}
 				name="email"
 				errors={errors}
 				register={register}
 			/>
 
-			<BirthDateField
-				label="Birth Date"
-				name="birthDate"
-				control={control}
-				errors={errors}
-			/>
-
 			<PasswordField
-				label="Password"
+				label={language === "fr" ? "Mot de passe" : "Password"}
 				name="password"
 				autoComplete="new-password"
 				errors={errors}
@@ -92,14 +79,20 @@ export const RegisterForm = () => {
 				disabled={!isDirty}
 				className="w-full flex justify-center rounded-lg font-semibold"
 			>
-				{isSubmitting ? "Registering…" : "Register"}
+				{isSubmitting 
+					? (language === "fr" ? "Inscription en cours…" : "Registering…") 
+					: (language === "fr" ? "S'inscrire" : "Register")}
 			</OriginButton>
 
 			<p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4 leading-relaxed">
-				By registering, you agree to our{" "}
-				<a href="#terms" className="text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline">Terms of Service</a>
-				{" "}and{" "}
-				<a href="#privacy" className="text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline">Privacy Policy</a>.
+				{language === "fr" ? "En vous inscrivant, vous acceptez nos " : "By registering, you agree to our "}
+				<a href="#terms" className="text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline">
+					{language === "fr" ? "Conditions d'utilisation" : "Terms of Service"}
+				</a>
+				{language === "fr" ? " et notre " : " and "}
+				<a href="#privacy" className="text-emerald-700 hover:text-emerald-800 dark:text-lime-400 dark:hover:text-lime-300 hover:underline">
+					{language === "fr" ? "Politique de confidentialité" : "Privacy Policy"}
+				</a>.
 			</p>
 		</form>
 	);

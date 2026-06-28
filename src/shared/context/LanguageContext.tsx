@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type Language = "en" | "fr";
@@ -5,6 +6,8 @@ export type Language = "en" | "fr";
 export interface TranslationDictionary {
 	[key: string]: string | TranslationDictionary;
 }
+
+type TranslationValue = string | TranslationDictionary;
 
 const translations: Record<Language, TranslationDictionary> = {
 	en: {
@@ -316,14 +319,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	// Dot notation translator: e.g. t("homepage.hero.title")
 	const t = (key: string): string => {
 		const keys = key.split(".");
-		let current: any = translations[language];
+		let current: TranslationValue = translations[language];
 
 		for (const k of keys) {
-			if (current && typeof current === "object" && k in current) {
-				current = current[k];
-			} else {
-				return key; // Fallback to raw key if translation is missing
+			if (typeof current === "string" || !(k in current)) {
+				return key;
 			}
+			current = current[k];
 		}
 
 		return typeof current === "string" ? current : key;

@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from "@/core/routes/paths";
+import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 import { publicApiRequest } from "@/shared/utils/axiosPublic";
 import { clearAuth, useAuthStore } from "../stores/authStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
