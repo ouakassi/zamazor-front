@@ -165,6 +165,7 @@ export const productService = {
 				url: "/products?size=100",
 				method: "GET",
 			},
+			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -192,6 +193,7 @@ export const productService = {
 				url: `/products/${id}`,
 				method: "GET",
 			},
+			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -216,6 +218,7 @@ export const productService = {
 				url: `/products/category/${categoryId}?size=100`,
 				method: "GET",
 			},
+			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -239,6 +242,7 @@ export const productService = {
 				url: `/products/search?q=${encodeURIComponent(query)}`,
 				method: "GET",
 			},
+			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -262,6 +266,7 @@ export const productService = {
 				url: "/categories",
 				method: "GET",
 			},
+			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
