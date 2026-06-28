@@ -1,6 +1,7 @@
 export interface Product {
 	id: string;
 	name: string;
+	createdAt?: string;
 	category: string;
 	price: string;
 	flavor: string;

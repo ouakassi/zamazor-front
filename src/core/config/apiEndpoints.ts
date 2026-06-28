@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
 	},
 	PRODUCTS: {
 		ROOT: "/products",
+		SEARCH_ROOT: "/products/search",
 		DETAILS: (id: string) => `/products/${id}`,
 		CATEGORY: (id: string) => `/products/category/${id}`,
 		SEARCH: (query: string) => `/products/search?q=${encodeURIComponent(query)}`,
@@ -28,6 +29,10 @@ export const API_ENDPOINTS = {
 	},
 	ADDRESSES: {
 		ROOT: "/addresses",
+	},
+	WISHLISTS: {
+		ROOT: "/wishlists",
+		DETAILS: (productId: string) => `/wishlists/${productId}`,
 	},
 	ORDERS: {
 		ROOT: "/orders",

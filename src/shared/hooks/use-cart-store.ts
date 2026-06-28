@@ -4,6 +4,7 @@ import type { Product } from "@/core/config/productsData";
 import { cartService } from "@/features/cart/services/cartService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { AuthStatus } from "@/features/auth/types";
+import { parsePrice } from "@/shared/utils/price";
 
 export interface CartItem {
 	product: Product;
@@ -90,11 +91,10 @@ export const useCartStore = create<CartStore>()(
 			totalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 			subtotal: () =>
 				get().items.reduce((sum, item) => {
-					if (!item || !item.product || typeof item.product.price !== "string") {
+					if (!item || !item.product) {
 						return sum;
 					}
-					const priceNum = parseFloat(item.product.price.replace(/[^0-9.]/g, ""));
-					return isNaN(priceNum) ? sum : sum + priceNum * item.quantity;
+					return sum + parsePrice(item.product.price) * item.quantity;
 				}, 0),
 		}),
 		{

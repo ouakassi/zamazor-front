@@ -6,6 +6,7 @@ import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { DashboardLayout } from "@/pages/dashboard/DashboardLayout";
 import { OverviewPage } from "@/pages/dashboard/OverviewPage";
 import { ProductsPage } from "@/pages/dashboard/ProductsPage";
+import { CategoriesPage } from "@/pages/dashboard/CategoriesPage";
 import { OrdersPage } from "@/pages/dashboard/OrdersPage";
 import NotFound from "@/pages/NotFound";
 import { HomePage } from "@/pages/public/HomePage";
@@ -87,6 +88,10 @@ const router = createBrowserRouter([
 								element: <ProductsPage />,
 							},
 							{
+								path: "categories",
+								element: <CategoriesPage />,
+							},
+							{
 								path: "orders",
 								element: <OrdersPage />,
 							},
@@ -112,4 +117,3 @@ const router = createBrowserRouter([
 ]);
 
 export default router;
-

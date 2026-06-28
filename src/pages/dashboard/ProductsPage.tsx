@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, type FormEvent } from "react";
+import { motion } from "framer-motion";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
 import { productService } from "@/features/products/services/productService";
@@ -12,14 +13,25 @@ import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Search, Plus, Trash2, Edit, ExternalLink, X, RefreshCw, Package, Layers, AlertTriangle, BadgeDollarSign } from "lucide-react";
 
+const cardMotion = {
+	initial: { opacity: 0, y: 16 },
+	animate: { opacity: 1, y: 0 },
+	transition: { duration: 0.35 },
+};
+
 export const ProductsPage = () => {
 	useDocumentTitle(`Products Management | ${CONFIG.APP_NAME}`);
 	const fetchStoreProducts = useProductStore((state) => state.fetchProducts);
 
 	// Data states
 	const [products, setProducts] = useState<Product[]>([]);
+	const [tableProducts, setTableProducts] = useState<Product[]>([]);
+	const [tableTotalElements, setTableTotalElements] = useState(0);
+	const [tableTotalPages, setTableTotalPages] = useState(1);
+	const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
 	const [categories, setCategories] = useState<BackendCategory[]>([]);
 	const [loading, setLoading] = useState(true);
+	const highlightTimeoutRef = useRef<number | null>(null);
 
 	// Modals states
 	const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -56,7 +68,7 @@ export const ProductsPage = () => {
 	const [productSearch, setProductSearch] = useState("");
 	const [productPage, setProductPage] = useState(1);
 	const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
-	const [sortBy, setSortBy] = useState("name-asc");
+	const [sortBy, setSortBy] = useState("newest");
 	const productsPerPage = 10;
 
 	const handleSearchChange = (value: string) => {
@@ -74,14 +86,42 @@ export const ProductsPage = () => {
 		setProductPage(1);
 	};
 
-	const isFilterActive = productSearch !== "" || selectedCategoryFilter !== "all" || sortBy !== "name-asc";
+	const isFilterActive = productSearch !== "" || selectedCategoryFilter !== "all" || sortBy !== "newest";
 
 	const handleResetFilters = () => {
 		setProductSearch("");
 		setSelectedCategoryFilter("all");
-		setSortBy("name-asc");
+		setSortBy("newest");
 		setProductPage(1);
 	};
+
+	const loadTableData = useCallback(async () => {
+		try {
+			const result = await productService.getProductsPage({
+				page: productPage,
+				size: productsPerPage,
+				query: productSearch.trim() || undefined,
+				categoryId: selectedCategoryFilter !== "all" ? selectedCategoryFilter : undefined,
+			});
+
+			setTableProducts(result.items);
+			setTableTotalElements(result.totalElements);
+			setTableTotalPages(Math.max(1, result.totalPages));
+		} catch (error) {
+			console.error("Failed to load dashboard products table:", error);
+			setTableProducts([]);
+			setTableTotalElements(0);
+			setTableTotalPages(1);
+		}
+	}, [productPage, productSearch, productsPerPage, selectedCategoryFilter]);
+
+	useEffect(() => {
+		return () => {
+			if (highlightTimeoutRef.current !== null) {
+				window.clearTimeout(highlightTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const loadData = useCallback(async () => {
 		try {
@@ -92,18 +132,24 @@ export const ProductsPage = () => {
 			setProducts(prodsData);
 			setCategories(catsData);
 			setProdCategory((current) => current || catsData[0]?.id || "");
+			await loadTableData();
 		} catch (error) {
 			console.error("Failed to load dashboard products data:", error);
 			toast.error("Failed to refresh product data.");
 		} finally {
 			setLoading(false);
 		}
-	}, [fetchStoreProducts]);
+	}, [fetchStoreProducts, loadTableData]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		loadData();
 	}, [loadData]);
+
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		void loadTableData();
+	}, [loadTableData]);
 
 	const showConfirm = (title: string, desc: string, action: () => void, isDestructive = false, confirmText = "Continue") => {
 		setConfirmTitle(title);
@@ -301,6 +347,19 @@ export const ProductsPage = () => {
 				setIsProductModalOpen(false);
 				resetProductForm();
 				await loadData();
+				if (!editingProduct) {
+					setHighlightedProductId(result.id);
+					setTableProducts((current) => [result, ...current.filter((product) => product.id !== result.id)].slice(0, productsPerPage));
+
+					if (highlightTimeoutRef.current !== null) {
+						window.clearTimeout(highlightTimeoutRef.current);
+					}
+
+					highlightTimeoutRef.current = window.setTimeout(() => {
+						setHighlightedProductId(null);
+						void loadTableData();
+					}, 2000);
+				}
 			} else {
 				toast.error("Failed to save product.");
 			}
@@ -339,34 +398,40 @@ export const ProductsPage = () => {
 	};
 
 	// Products filtering, sorting and pagination
-	const filteredProducts = products
-		.filter((p) => {
-			const searchLower = productSearch.toLowerCase();
-			const matchesSearch =
-				p.name.toLowerCase().includes(searchLower) ||
-				p.category.toLowerCase().includes(searchLower);
-			const matchesCategory =
-				selectedCategoryFilter === "all" ||
-				p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
-			return matchesSearch && matchesCategory;
-		})
-		.sort((a, b) => {
-			if (sortBy === "name-asc") return a.name.localeCompare(b.name);
-			if (sortBy === "name-desc") return b.name.localeCompare(a.name);
-			
-			const priceA = parseFloat((a.price || "").replace(/[^0-9.]/g, "")) || 0;
-			const priceB = parseFloat((b.price || "").replace(/[^0-9.]/g, "")) || 0;
-			if (sortBy === "price-asc") return priceA - priceB;
-			if (sortBy === "price-desc") return priceB - priceA;
+	const filteredProducts = tableProducts;
+	const sortedProducts = useMemo(() => {
+		const next = [...filteredProducts];
 
-			return 0;
-		});
+		if (sortBy === "newest") {
+			return next.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+		}
 
-	const totalProductPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
-	const paginatedProducts = filteredProducts.slice(
-		(productPage - 1) * productsPerPage,
-		productPage * productsPerPage
-	);
+		if (sortBy === "oldest") {
+			return next.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+		}
+
+		if (sortBy === "name-desc") {
+			return next.sort((a, b) => b.name.localeCompare(a.name));
+		}
+
+		if (sortBy === "price-asc") {
+			return next.sort(
+				(a, b) =>
+					parseFloat(a.price.replace(/[^0-9.]/g, "")) - parseFloat(b.price.replace(/[^0-9.]/g, "")),
+			);
+		}
+
+		if (sortBy === "price-desc") {
+			return next.sort(
+				(a, b) =>
+					parseFloat(b.price.replace(/[^0-9.]/g, "")) - parseFloat(a.price.replace(/[^0-9.]/g, "")),
+			);
+		}
+
+		return next.sort((a, b) => a.name.localeCompare(b.name));
+	}, [filteredProducts, sortBy]);
+	const totalProductPages = tableTotalPages;
+	const paginatedProducts = sortedProducts;
 
 	const totalProducts = products.length;
 	const totalCategories = categories.length;
@@ -424,57 +489,52 @@ export const ProductsPage = () => {
 					{
 						label: "Total Products",
 						value: totalProducts.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-slate-200/70",
-						accent: "bg-slate-50",
-						iconColor: "text-slate-700",
+						subtitle: "Across the catalog",
+						accent: "bg-slate-50 text-slate-700",
 						icon: Package,
 					},
 					{
 						label: "Categories",
 						value: totalCategories.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-teal-100/70",
-						accent: "bg-teal-50",
-						iconColor: "text-teal-700",
+						subtitle: "Available product groups",
+						accent: "bg-teal-50 text-teal-700",
 						icon: Layers,
 					},
 					{
 						label: "Low Stock",
 						value: lowStockProducts.length.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-amber-100/70",
-						accent: "bg-amber-50",
-						iconColor: "text-amber-700",
+						subtitle: "Needs attention",
+						accent: "bg-amber-50 text-amber-700",
 						icon: AlertTriangle,
 					},
 					{
 						label: "Avg Price",
 						value: `${averagePrice.toFixed(2)} MAD`,
-						tone: "bg-white text-slate-950",
-						ring: "ring-lime-100/70",
-						accent: "bg-lime-50",
-						iconColor: "text-lime-700",
+						subtitle: "Catalog average",
+						accent: "bg-lime-50 text-lime-700",
 						icon: BadgeDollarSign,
 					},
-				].map((metric) => {
+				].map((metric, index) => {
 					const Icon = metric.icon;
 
 					return (
-						<div
+						<motion.div
 							key={metric.label}
-							className={`relative overflow-hidden rounded-3xl border border-white p-5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.45)] ring-1 ${metric.ring} ${metric.tone} transition-shadow hover:shadow-[0_20px_50px_-32px_rgba(15,23,42,0.5)]`}
+							{...cardMotion}
+							transition={{ duration: 0.35, delay: index * 0.05 }}
+							className="relative overflow-hidden rounded-3xl border border-white bg-white p-5 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.42)] ring-1 ring-slate-100 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(15,23,42,0.5)]"
 						>
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
 									<h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
+									<p className="mt-1 text-xs text-slate-500">{metric.subtitle}</p>
 								</div>
 								<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ring-slate-200/70 ${metric.accent}`}>
-									<Icon className={`size-5 ${metric.iconColor}`} />
+									<Icon className="size-5" />
 								</div>
 							</div>
-						</div>
+						</motion.div>
 					);
 				})}
 			</div>
@@ -502,7 +562,7 @@ export const ProductsPage = () => {
 						>
 							<option value="all">All Categories</option>
 							{categories.map((cat) => (
-								<option key={cat.id} value={cat.label.toLowerCase()}>
+								<option key={cat.id} value={cat.id}>
 									{cat.label}
 								</option>
 							))}
@@ -514,6 +574,8 @@ export const ProductsPage = () => {
 							onChange={(e) => handleSortByChange(e.target.value)}
 							className="h-9 rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 cursor-pointer min-w-[150px]"
 						>
+							<option value="newest">Latest first</option>
+							<option value="oldest">Oldest first</option>
 							<option value="name-asc">Sort by Name (A-Z)</option>
 							<option value="name-desc">Sort by Name (Z-A)</option>
 							<option value="price-asc">Price: Low to High</option>
@@ -535,10 +597,9 @@ export const ProductsPage = () => {
 
 					<div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0 self-end md:self-auto select-none">
 						<div className="text-xs text-slate-500 font-bold font-sans">
-							{filteredProducts.length === 0 
-								? "No items match criteria" 
-								: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, filteredProducts.length)} of ${filteredProducts.length} items`
-							}
+							{tableTotalElements === 0
+								? "No items match criteria"
+								: `Showing ${((productPage - 1) * productsPerPage) + 1}-${Math.min(productPage * productsPerPage, tableTotalElements)} of ${tableTotalElements} items`}
 						</div>
 						{totalProductPages > 1 && (
 							<div className="flex items-center gap-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50/50">
@@ -590,9 +651,14 @@ export const ProductsPage = () => {
 										No products match your filter.
 									</td>
 								</tr>
-							) : (
+								) : (
 								paginatedProducts.map((product) => (
-									<tr key={product.id} className="hover:bg-slate-50/40 transition-colors duration-150 group">
+									<tr
+										key={product.id}
+										className={`group transition-colors duration-150 hover:bg-slate-50/40 ${
+											highlightedProductId === product.id ? "bg-emerald-50/80" : ""
+										}`}
+									>
 										<td className="px-6 py-4">
 											<Tooltip content={product.id}>
 												<span className="text-[10px] font-sans text-slate-400 max-w-[70px] truncate select-all block cursor-help">

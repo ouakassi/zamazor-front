@@ -5,10 +5,19 @@ import { RouterProvider } from "react-router";
 import { useEffect } from "react";
 import { userService } from "./features/auth/services/usersService";
 import { LanguageProvider } from "./shared/context/LanguageContext";
+import { tokenManager } from "./features/auth/globals/tokenManager";
+import { useBookmarkStore } from "./features/products/stores/bookmarkStore";
 
 function App() {
 	useEffect(() => {
-		void userService.fetchCurrentUser();
+		const bootstrap = async () => {
+			await userService.fetchCurrentUser();
+			if (tokenManager.getAccessToken()) {
+				await useBookmarkStore.getState().syncWishlists();
+			}
+		};
+
+		void bootstrap();
 	}, []);
 
 	return (

@@ -15,6 +15,7 @@ export interface BackendCategory {
 export interface BackendProduct {
 	id: string;
 	name: string;
+	createdAt?: string;
 	description: string | null;
 	imageUrl: string | null;
 	price: number;
@@ -23,8 +24,33 @@ export interface BackendProduct {
 	category: BackendCategory;
 }
 
-interface PaginatedProductResponse {
-	items?: BackendProduct[];
+interface PaginatedResponse<T> {
+	items?: T[];
+	totalElements?: number;
+	totalPages?: number;
+	page?: number;
+	size?: number;
+}
+
+export interface PageQueryParams {
+	page?: number;
+	size?: number;
+}
+
+export interface ProductListQueryParams extends PageQueryParams {
+	query?: string;
+	categoryId?: string;
+	minPrice?: number;
+	maxPrice?: number;
+	sort?: string;
+}
+
+export interface PaginatedProductsResult {
+	items: Product[];
+	totalElements: number;
+	totalPages: number;
+	page: number;
+	size: number;
 }
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -137,6 +163,7 @@ export function mapBackendProduct(backendProd: BackendProduct): Product {
 	return {
 		id: backendProd.id,
 		name: backendProd.name,
+		createdAt: backendProd.createdAt,
 		category: (() => {
 			const label = backendProd.category ? backendProd.category.label : (meta?.category || "Supplement");
 			if (label === "Proteins") return "Protein";
@@ -169,7 +196,7 @@ function extractProductItems(response: unknown): BackendProduct[] {
 	}
 
 	if (response && typeof response === "object") {
-		const paginated = response as PaginatedProductResponse;
+		const paginated = response as PaginatedResponse<BackendProduct>;
 		if (Array.isArray(paginated.items)) {
 			return paginated.items;
 		}
@@ -178,22 +205,102 @@ function extractProductItems(response: unknown): BackendProduct[] {
 	return [];
 }
 
+function extractPaginatedProducts(response: unknown): PaginatedProductsResult {
+	const items = extractProductItems(response).map(mapBackendProduct);
+
+	if (!response || typeof response !== "object" || Array.isArray(response)) {
+		return {
+			items,
+			totalElements: items.length,
+			totalPages: 1,
+			page: 1,
+			size: items.length,
+		};
+	}
+
+	const paginated = response as PaginatedResponse<BackendProduct>;
+	const totalElements = typeof paginated.totalElements === "number" ? paginated.totalElements : items.length;
+	const totalPages = typeof paginated.totalPages === "number" ? paginated.totalPages : 1;
+	const page = typeof paginated.page === "number" ? paginated.page : 1;
+	const size = typeof paginated.size === "number" ? paginated.size : items.length;
+
+	return { items, totalElements, totalPages, page, size };
+}
+
+function buildQueryString(params: Record<string, string | number | undefined>) {
+	const query = new URLSearchParams();
+
+	Object.entries(params).forEach(([key, value]) => {
+		if (value === undefined || value === null || value === "") return;
+		query.set(key, String(value));
+	});
+
+	return query.toString();
+}
+function toApiPage(page?: number) {
+	if (typeof page !== "number" || Number.isNaN(page)) return undefined;
+	return Math.max(0, page - 1);
+}
+
+function buildPagedProductsUrl(params: ProductListQueryParams = {}) {
+	const queryString = buildQueryString({
+		page: toApiPage(params.page),
+		size: params.size,
+		categoryId: params.categoryId,
+		minPrice: params.minPrice,
+		maxPrice: params.maxPrice,
+		sort: params.sort,
+	});
+
+	if (params.query && params.query.trim()) {
+		const searchParams = new URLSearchParams();
+		searchParams.set("q", params.query.trim());
+		if (queryString) {
+			queryString.split("&").forEach((entry) => {
+				const [key, value] = entry.split("=");
+				if (key && value) {
+					searchParams.set(key, decodeURIComponent(value));
+				}
+			});
+		}
+
+		return `${API_ENDPOINTS.PRODUCTS.SEARCH_ROOT}?${searchParams.toString()}`;
+	}
+
+	if (params.categoryId) {
+		return `${API_ENDPOINTS.PRODUCTS.CATEGORY(params.categoryId)}${queryString ? `?${queryString}` : ""}`;
+	}
+
+	return `${API_ENDPOINTS.PRODUCTS.ROOT}${queryString ? `?${queryString}` : ""}`;
+}
+
 export const productService = {
-	getProducts: async (): Promise<Product[]> => {
+	getProductsPage: async (params: ProductListQueryParams = {}): Promise<PaginatedProductsResult> => {
 		const response = await publicApiRequest<unknown>(
 			{
-				url: `${API_ENDPOINTS.PRODUCTS.ROOT}?size=100`,
+				url: buildPagedProductsUrl(params),
 				method: "GET",
 			},
 			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
-			console.error("Product API returned system error:", response);
-			return [];
+			console.error("Product pagination API returned system error:", response);
+			return {
+				items: [],
+				totalElements: 0,
+				totalPages: 1,
+				page: params.page ?? 1,
+				size: params.size ?? 0,
+			};
 		}
 
-		return extractProductItems(response).map(mapBackendProduct);
+		return extractPaginatedProducts(response);
+	},
+
+	getProducts: async (): Promise<Product[]> => {
+		const response = await productService.getProductsPage({ page: 1, size: 100 });
+		return response.items;
 	},
 
 	getProductById: async (id: string): Promise<Product | null> => {
@@ -222,13 +329,24 @@ export const productService = {
 	},
 
 	getProductsByCategory: async (categoryId: string): Promise<Product[]> => {
+		const response = await productService.getProductsByCategoryPage(categoryId, { page: 1, size: 100 });
+		return response.items;
+	},
+
+	getProductsByCategoryPage: async (categoryId: string, params: PageQueryParams = {}): Promise<PaginatedProductsResult> => {
 		if (!uuidRegex.test(categoryId)) {
-			return [];
+			return {
+				items: [],
+				totalElements: 0,
+				totalPages: 1,
+				page: params.page ?? 1,
+				size: params.size ?? 0,
+			};
 		}
 
 		const response = await publicApiRequest<unknown>(
 			{
-				url: `${API_ENDPOINTS.PRODUCTS.CATEGORY(categoryId)}?size=100`,
+				url: `${API_ENDPOINTS.PRODUCTS.CATEGORY(categoryId)}${buildQueryString({ page: toApiPage(params.page), size: params.size }) ? `?${buildQueryString({ page: toApiPage(params.page), size: params.size })}` : ""}`,
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -236,16 +354,27 @@ export const productService = {
 
 		if (isSystemError(response)) {
 			console.error(`Category API returned error for category ${categoryId}:`, response);
-			return [];
+			return {
+				items: [],
+				totalElements: 0,
+				totalPages: 1,
+				page: params.page ?? 1,
+				size: params.size ?? 0,
+			};
 		}
 
-		return extractProductItems(response).map(mapBackendProduct);
+		return extractPaginatedProducts(response);
 	},
 
 	searchProducts: async (query: string): Promise<Product[]> => {
+		const response = await productService.searchProductsPage(query, { page: 1, size: 100 });
+		return response.items;
+	},
+
+	searchProductsPage: async (query: string, params: ProductListQueryParams = {}): Promise<PaginatedProductsResult> => {
 		const response = await publicApiRequest<unknown>(
 			{
-				url: API_ENDPOINTS.PRODUCTS.SEARCH(query),
+				url: buildPagedProductsUrl({ ...params, query }),
 				method: "GET",
 			},
 			{ ignoreErrors: true }
@@ -253,10 +382,16 @@ export const productService = {
 
 		if (isSystemError(response)) {
 			console.error("Product search API returned system error:", response);
-			return [];
+			return {
+				items: [],
+				totalElements: 0,
+				totalPages: 1,
+				page: params.page ?? 1,
+				size: params.size ?? 0,
+			};
 		}
 
-		return extractProductItems(response).map(mapBackendProduct);
+		return extractPaginatedProducts(response);
 	},
 
 	getCategories: async (): Promise<BackendCategory[]> => {
@@ -274,6 +409,35 @@ export const productService = {
 		}
 
 		return Array.isArray(response) ? response : [];
+	},
+
+	getCategoriesPage: async (params: PageQueryParams = {}): Promise<PaginatedResponse<BackendCategory> & { items: BackendCategory[] }> => {
+		const queryString = buildQueryString({ page: toApiPage(params.page), size: params.size });
+		const response = await publicApiRequest<unknown>(
+			{
+				url: `${API_ENDPOINTS.CATEGORIES.ROOT}${queryString ? `?${queryString}` : ""}`,
+				method: "GET",
+			},
+			{ ignoreErrors: true }
+		);
+
+		if (isSystemError(response)) {
+			console.error("Categories pagination API returned system error:", response);
+			return { items: [], totalElements: 0, totalPages: 1, page: params.page ?? 1, size: params.size ?? 0 };
+		}
+
+		if (Array.isArray(response)) {
+			return { items: response, totalElements: response.length, totalPages: 1, page: 1, size: response.length };
+		}
+
+		const paginated = response as PaginatedResponse<BackendCategory>;
+		return {
+			items: Array.isArray(paginated.items) ? paginated.items : [],
+			totalElements: typeof paginated.totalElements === "number" ? paginated.totalElements : 0,
+			totalPages: typeof paginated.totalPages === "number" ? paginated.totalPages : 1,
+			page: typeof paginated.page === "number" ? paginated.page + 1 : (params.page ?? 1),
+			size: typeof paginated.size === "number" ? paginated.size : (params.size ?? 0),
+		};
 	},
 
 	createCategory: async (label: string): Promise<BackendCategory | null> => {
@@ -401,3 +565,5 @@ export const productService = {
 		}
 	},
 };
+
+

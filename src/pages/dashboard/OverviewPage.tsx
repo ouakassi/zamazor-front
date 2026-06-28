@@ -5,6 +5,8 @@ import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { orderService, type BackendOrder } from "@/features/orders/services/orderService";
+import { getOrderStatusMeta } from "@/features/orders/constants/orderStatus";
+import { formatMadCompact } from "@/shared/utils/price";
 import type { Product } from "@/core/config/productsData";
 import { Button } from "@/shared/components/ui/button";
 import { useProductStore } from "@/features/products/stores/productStore";
@@ -25,18 +27,18 @@ const cardMotion = {
 	transition: { duration: 0.45 },
 };
 
-const formatMoney = (value: number) => `${value.toFixed(2)} MAD`;
+const formatMoney = (value: number) => formatMadCompact(value);
 
-const getOrderTone = (status: BackendOrder["status"]) => {
-	if (status === "PENDING") {
-		return "bg-amber-50 text-amber-800 border-amber-200/70";
+const getCategoryLabel = (category: unknown) => {
+	if (category && typeof category === "object" && "label" in category && typeof category.label === "string") {
+		return category.label;
 	}
 
-	if (status === "COMPLETED" || status === "PAID") {
-		return "bg-emerald-50 text-emerald-800 border-emerald-200/70";
+	if (typeof category === "string" && category.trim()) {
+		return category;
 	}
 
-	return "bg-slate-100 text-slate-500 border-slate-200";
+	return "Uncategorized";
 };
 
 export const OverviewPage = () => {
@@ -67,17 +69,17 @@ export const OverviewPage = () => {
 		loadData();
 	}, [fetchStoreProducts]);
 
-	const activeOrders = useMemo(
-		() => orders.filter((order) => order.status !== "CANCELED"),
+	const settledOrders = useMemo(
+		() => orders.filter((order) => ["PAID", "COMPLETED", "DELIVERED"].includes(order.status)),
 		[orders],
 	);
 
 	const totalSales = useMemo(
-		() => activeOrders.reduce((sum, order) => sum + order.total, 0),
-		[activeOrders],
+		() => settledOrders.reduce((sum, order) => sum + order.total, 0),
+		[settledOrders],
 	);
 
-	const averageOrderValue = activeOrders.length > 0 ? totalSales / activeOrders.length : 0;
+	const averageOrderValue = settledOrders.length > 0 ? totalSales / settledOrders.length : 0;
 
 	const statusCounts = useMemo(
 		() =>
@@ -89,7 +91,7 @@ export const OverviewPage = () => {
 	);
 
 	const pendingOrders = statusCounts.PENDING || 0;
-	const completedOrders = (statusCounts.COMPLETED || 0) + (statusCounts.PAID || 0);
+	const completedOrders = (statusCounts.COMPLETED || 0) + (statusCounts.PAID || 0) + (statusCounts.DELIVERED || 0);
 	const canceledOrders = statusCounts.CANCELED || 0;
 	const inFlightOrders = pendingOrders + completedOrders;
 
@@ -116,7 +118,8 @@ export const OverviewPage = () => {
 		const aggregate = new Map<string, number>();
 
 		for (const product of products) {
-			aggregate.set(product.category, (aggregate.get(product.category) || 0) + 1);
+			const categoryName = product.category || "Uncategorized";
+			aggregate.set(categoryName, (aggregate.get(categoryName) || 0) + 1);
 		}
 
 		return [...aggregate.entries()]
@@ -133,20 +136,24 @@ export const OverviewPage = () => {
 
 		for (const order of orders) {
 			for (const item of order.items) {
+				const productId = item.product?.id;
+				if (!productId) continue;
+
 				const quantity = item.quantity || 0;
-				const revenue = (item.unitPrice || 0) * quantity;
-				const current = aggregate.get(item.product.id);
+				const revenue = (item.unitPrice || item.product?.price || 0) * quantity;
+				const current = aggregate.get(productId);
+				const category = getCategoryLabel(item.product?.category);
 
 				if (current) {
 					current.quantity += quantity;
 					current.revenue += revenue;
 				} else {
-					aggregate.set(item.product.id, {
-						id: item.product.id,
-						name: item.product.name,
+					aggregate.set(productId, {
+						id: productId,
+						name: item.product?.name || "Unknown product",
 						quantity,
 						revenue,
-						category: item.product.category.label,
+						category,
 					});
 				}
 			}
@@ -226,7 +233,7 @@ export const OverviewPage = () => {
 							<div className="mt-3 flex items-end justify-between">
 								<div>
 									<p className="text-3xl font-semibold">{formatMoney(totalSales)}</p>
-									<p className="mt-1 text-xs text-emerald-50/70">From active orders</p>
+									<p className="mt-1 text-xs text-emerald-50/70">From settled orders</p>
 								</div>
 								<TrendingUp className="size-8 text-emerald-200" />
 							</div>
@@ -476,8 +483,8 @@ export const OverviewPage = () => {
 												{order.id.slice(0, 8).toUpperCase()}
 											</p>
 										</div>
-										<span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getOrderTone(order.status)}`}>
-											{order.status}
+										<span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getOrderStatusMeta(order.status).badgeClass}`}>
+											{getOrderStatusMeta(order.status).label}
 										</span>
 									</div>
 									<div className="mt-3 flex items-center justify-between text-xs text-slate-500">
