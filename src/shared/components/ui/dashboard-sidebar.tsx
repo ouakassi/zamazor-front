@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
   FolderKanban, 
+  Tags,
   LogOut,
   ChevronRight,
   Inbox,
@@ -28,6 +29,7 @@ const mockNavGroups: NavGroupData[] = [
     items: [
       { id: 'overview', title: 'Overview', icon: LayoutDashboard },
       { id: 'products', title: 'Products', icon: FolderKanban },
+      { id: 'categories', title: 'Categories', icon: Tags },
       { id: 'orders', title: 'Orders', icon: Inbox },
     ]
   }

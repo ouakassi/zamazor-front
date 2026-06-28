@@ -16,6 +16,7 @@ export const DashboardLayout = () => {
 	const getActiveTab = () => {
 		const path = location.pathname;
 		if (path.endsWith("/products")) return "products";
+		if (path.endsWith("/categories")) return "categories";
 		if (path.endsWith("/orders")) return "orders";
 		return "overview";
 	};

@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 
 import { useLanguage } from "@/shared/context/LanguageContext";
 import { toast } from "sonner";
+import { parsePrice } from "@/shared/utils/price";
 import {
 	ArrowLeft,
 	ArrowRightIcon,
@@ -103,10 +104,7 @@ export const CartPage = () => {
 											{/* Price Subtotal */}
 											<div className="text-right min-w-[70px]">
 												<p className="text-sm font-black text-slate-900">
-													{product && typeof product.price === "string"
-														? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
-														: "0.00"
-													} MAD
+													{(parsePrice(product.price) * quantity).toFixed(2)} MAD
 												</p>
 												<p className="text-[10px] text-slate-400 mt-0.5">{product.price} {language === "fr" ? "chacun" : "each"}</p>
 											</div>

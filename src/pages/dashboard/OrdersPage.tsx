@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
 import { orderService, type BackendOrder } from "@/features/orders/services/orderService";
@@ -7,6 +8,11 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { isSystemError } from "@/shared/types";
+import { ORDER_STATUS_OPTIONS, getOrderStatusMeta, isFinalOrderStatus } from "@/features/orders/constants/orderStatus";
+import { parseShippingAddressFallback } from "@/features/addresses/utils/addressHelpers";
+import { formatMadCompact } from "@/shared/utils/price";
+import { ORDER_STATUSES } from "@/features/orders/constants/orderStatus";
 import {
 	AlertTriangle,
 	BadgeDollarSign,
@@ -21,30 +27,53 @@ import {
 
 const ORDERS_PER_PAGE = 8;
 
-const formatMoney = (value: number) => `${(value || 0).toFixed(2)} MAD`;
+const cardMotion = {
+	initial: { opacity: 0, y: 16 },
+	animate: { opacity: 1, y: 0 },
+	transition: { duration: 0.35 },
+};
 
-const getStatusTone = (status: BackendOrder["status"]) => {
-	if (status === "PENDING") {
-		return "bg-amber-50 text-amber-800 border-amber-200/70";
-	}
+const formatMoney = (value: number) => formatMadCompact(value);
 
-	if (status === "COMPLETED" || status === "PAID") {
-		return "bg-emerald-50 text-emerald-800 border-emerald-200/70";
-	}
+const getOrderItemUnitPrice = (item: BackendOrder["items"][number]) =>
+	item.unitPrice ?? item.product?.price ?? 0;
 
-	if (status === "CANCELED") {
-		return "bg-slate-100 text-slate-500 border-slate-200";
-	}
+const normalizeOrderStatus = (status: string) => {
+	const upper = status?.toUpperCase?.() || "";
+	return ORDER_STATUSES.includes(upper as (typeof ORDER_STATUSES)[number]) ? upper : "PENDING";
+};
 
-	return "bg-teal-50 text-teal-800 border-teal-200/70";
+const ADMIN_ORDER_STATUS_OPTIONS = ORDER_STATUS_OPTIONS.filter((option) => option.value !== "CANCELED");
+
+const formatShippingDetails = (order: BackendOrder | null | undefined) => {
+	const parsed = parseShippingAddressFallback(order?.shippingAddress);
+	const street = (order?.shippingStreet || parsed.street || "").trim();
+	const city = (order?.shippingCity || parsed.city || "").trim();
+	const country = (order?.shippingCountry || parsed.country || "Morocco").trim();
+	const phone = (order?.phone || parsed.phone || "").trim();
+	const phoneLabel = phone ? `${country.toLowerCase() === "morocco" ? "🇲🇦 " : ""}${phone}` : "";
+
+	return {
+		street,
+		city,
+		country,
+		phone,
+		fullAddress: [street, city, country].filter(Boolean).join(", "),
+		phoneLabel,
+		tooltipLabel: [street, city, country, phone ? `Phone: ${phoneLabel}` : ""].filter(Boolean).join(" • "),
+	};
 };
 
 export const OrdersPage = () => {
 	useDocumentTitle(`Orders Management | ${CONFIG.APP_NAME}`);
 
 	const [orders, setOrders] = useState<BackendOrder[]>([]);
+	const [tableOrders, setTableOrders] = useState<BackendOrder[]>([]);
+	const [tableTotalElements, setTableTotalElements] = useState(0);
+	const [tableTotalPages, setTableTotalPages] = useState(1);
 	const [loading, setLoading] = useState(true);
 	const [selectedOrder, setSelectedOrder] = useState<BackendOrder | null>(null);
+	const [updatingStatusOrderId, setUpdatingStatusOrderId] = useState<string | null>(null);
 
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [confirmTitle, setConfirmTitle] = useState("");
@@ -58,23 +87,48 @@ export const OrdersPage = () => {
 	const [sortBy, setSortBy] = useState("newest");
 	const [orderPage, setOrderPage] = useState(1);
 
+	const loadTableData = useCallback(async () => {
+		try {
+			const result = await orderService.getAllOrdersPage({
+				page: orderPage,
+				size: ORDERS_PER_PAGE,
+				status: statusFilter !== "all" ? statusFilter : undefined,
+			});
+
+			setTableOrders(result.items);
+			setTableTotalElements(result.totalElements);
+			setTableTotalPages(Math.max(1, result.totalPages));
+		} catch (error) {
+			console.error("Failed to load dashboard orders table:", error);
+			setTableOrders([]);
+			setTableTotalElements(0);
+			setTableTotalPages(1);
+		}
+	}, [orderPage, statusFilter]);
+
 	const loadData = useCallback(async () => {
 		setLoading(true);
 		try {
 			const data = await orderService.getAllOrders();
 			setOrders(data);
+			await loadTableData();
 		} catch (error) {
 			console.error("Failed to load dashboard orders:", error);
 			toast.error("Failed to refresh orders list.");
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [loadTableData]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		void loadData();
 	}, [loadData]);
+
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		void loadTableData();
+	}, [loadTableData]);
 
 	const showConfirm = (
 		title: string,
@@ -90,6 +144,58 @@ export const OrdersPage = () => {
 		setConfirmText(confirmLabel);
 		setConfirmOpen(true);
 	};
+
+	const handleChangeOrderStatus = useCallback(
+		(orderId: string, nextStatus: string) => {
+			const order = orders.find((entry) => entry.id === orderId);
+			if (!order || order.status === nextStatus) {
+				return;
+			}
+
+			const currentStatus = getOrderStatusMeta(order.status).label;
+			const targetStatus = getOrderStatusMeta(nextStatus).label;
+			const isIrreversible = isFinalOrderStatus(nextStatus);
+
+			showConfirm(
+				isIrreversible ? "Confirm Final Status" : "Update Order Status",
+				isIrreversible
+					? `Change order ${order.id.slice(0, 8).toUpperCase()} from ${currentStatus} to ${targetStatus}? This is a final status and cannot be undone.`
+					: `Change order ${order.id.slice(0, 8).toUpperCase()} from ${currentStatus} to ${targetStatus}?`,
+				async () => {
+					setUpdatingStatusOrderId(orderId);
+					try {
+						const result = await orderService.changeOrderStatus(orderId, nextStatus);
+						if (!result) {
+							toast.error("Failed to update order status.");
+							return;
+						}
+
+						if (isSystemError(result)) {
+							toast.error(result.title, {
+								description: result.detail || result.description || "The backend rejected this status change.",
+							});
+							return;
+						}
+
+						toast.success(`Order moved to ${targetStatus}.`);
+						await loadData();
+
+						if (selectedOrder?.id === orderId) {
+							setSelectedOrder(result);
+						}
+					} catch (error) {
+						console.error("Order status update failed:", error);
+						toast.error("Could not update this order.");
+					} finally {
+						setUpdatingStatusOrderId(null);
+					}
+				},
+				isIrreversible,
+				isIrreversible ? "Confirm" : "Update Status",
+			);
+		},
+		[loadData, orders, selectedOrder?.id],
+	);
 
 	const handleCancelOrder = (orderId: string) => {
 		const order = orders.find((o) => o.id === orderId);
@@ -126,12 +232,7 @@ export const OrdersPage = () => {
 	const normalizedSearch = orderSearch.trim().toLowerCase();
 
 	const filteredOrders = useMemo(() => {
-		const matchesStatus = (status: BackendOrder["status"]) => {
-			if (statusFilter === "all") return true;
-			return statusFilter === status.toLowerCase();
-		};
-
-		const matchesSearch = (order: BackendOrder) => {
+		const nextOrders = tableOrders.filter((order) => {
 			if (!normalizedSearch) return true;
 
 			const itemMatch = order.items.some((item) =>
@@ -144,39 +245,32 @@ export const OrdersPage = () => {
 				order.status.toLowerCase().includes(normalizedSearch) ||
 				itemMatch
 			);
-		};
+		}).sort((a, b) => {
+			if (sortBy === "oldest") {
+				return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+			}
 
-		const nextOrders = orders
-			.filter((order) => matchesStatus(order.status) && matchesSearch(order))
-			.sort((a, b) => {
-				if (sortBy === "oldest") {
-					return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-				}
+			if (sortBy === "total-asc") {
+				return (a.total || 0) - (b.total || 0);
+			}
 
-				if (sortBy === "total-asc") {
-					return (a.total || 0) - (b.total || 0);
-				}
+			if (sortBy === "total-desc") {
+				return (b.total || 0) - (a.total || 0);
+			}
 
-				if (sortBy === "total-desc") {
-					return (b.total || 0) - (a.total || 0);
-				}
+			if (sortBy === "status") {
+				return a.status.localeCompare(b.status);
+			}
 
-				if (sortBy === "status") {
-					return a.status.localeCompare(b.status);
-				}
-
-				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-			});
+			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+		});
 
 		return nextOrders;
-	}, [normalizedSearch, orders, sortBy, statusFilter]);
+	}, [normalizedSearch, tableOrders, sortBy]);
 
-	const totalOrderPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+	const totalOrderPages = tableTotalPages;
 	const safeOrderPage = Math.min(orderPage, totalOrderPages);
-	const paginatedOrders = filteredOrders.slice(
-		(safeOrderPage - 1) * ORDERS_PER_PAGE,
-		safeOrderPage * ORDERS_PER_PAGE,
-	);
+	const paginatedOrders = filteredOrders;
 
 	const isFilterActive = orderSearch !== "" || statusFilter !== "all" || sortBy !== "newest";
 
@@ -197,9 +291,13 @@ export const OrdersPage = () => {
 	);
 
 	const pendingOrders = statusCounts.PENDING || 0;
-	const completedOrders = (statusCounts.COMPLETED || 0) + (statusCounts.PAID || 0);
-	const activeOrders = orders.filter((order) => order.status !== "CANCELED");
-	const totalSales = activeOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+	const confirmedOrders = statusCounts.CONFIRMED || 0;
+	const processingOrders = statusCounts.PROCESSING || 0;
+	const shippedOrders = statusCounts.SHIPPED || 0;
+	const inProgressOrders = confirmedOrders + processingOrders + shippedOrders;
+	const settledOrders = orders.filter((order) => ["PAID", "COMPLETED", "DELIVERED"].includes(order.status));
+	const totalSales = settledOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+	const canChangeStatus = (status: string) => !isFinalOrderStatus(normalizeOrderStatus(status));
 
 	if (loading && orders.length === 0) {
 		return (
@@ -235,57 +333,52 @@ export const OrdersPage = () => {
 					{
 						label: "Total Orders",
 						value: orders.length.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-slate-200/70",
-						accent: "bg-slate-50",
-						iconColor: "text-slate-700",
+						subtitle: "Across the registry",
+						accent: "bg-slate-50 text-slate-700",
 						icon: Folder,
 					},
 					{
 						label: "Pending",
 						value: pendingOrders.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-amber-100/70",
-						accent: "bg-amber-50",
-						iconColor: "text-amber-700",
+						subtitle: "Waiting for action",
+						accent: "bg-amber-50 text-amber-700",
 						icon: Clock3,
 					},
 					{
-						label: "Completed",
-						value: completedOrders.toString(),
-						tone: "bg-white text-slate-950",
-						ring: "ring-emerald-100/70",
-						accent: "bg-emerald-50",
-						iconColor: "text-emerald-700",
+						label: "In Progress",
+						value: inProgressOrders.toString(),
+						subtitle: "Confirmed, processing, shipped",
+						accent: "bg-sky-50 text-sky-700",
 						icon: CheckCircle2,
 					},
 					{
 						label: "Revenue",
 						value: formatMoney(totalSales),
-						tone: "bg-white text-slate-950",
-						ring: "ring-lime-100/70",
-						accent: "bg-lime-50",
-						iconColor: "text-lime-700",
+						subtitle: "From settled orders",
+						accent: "bg-lime-50 text-lime-700",
 						icon: BadgeDollarSign,
 					},
-				].map((metric) => {
+				].map((metric, index) => {
 					const Icon = metric.icon;
 
 					return (
-					<div
-						key={metric.label}
-						className={`relative overflow-hidden rounded-3xl border border-white p-5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.45)] ring-1 ${metric.ring} ${metric.tone} transition-shadow hover:shadow-[0_20px_50px_-32px_rgba(15,23,42,0.5)]`}
-					>
-						<div className="flex items-start justify-between gap-4">
-							<div>
-								<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
-								<h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
+						<motion.div
+							key={metric.label}
+							{...cardMotion}
+							transition={{ duration: 0.35, delay: index * 0.05 }}
+							className="relative overflow-hidden rounded-3xl border border-white bg-white p-5 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.42)] ring-1 ring-slate-100 transition-shadow hover:shadow-[0_20px_50px_-30px_rgba(15,23,42,0.5)]"
+						>
+							<div className="flex items-start justify-between gap-4">
+								<div className="min-w-0">
+									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
+									<h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
+									<p className="mt-1 text-xs text-slate-500">{metric.subtitle}</p>
+								</div>
+								<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ring-slate-200/70 ${metric.accent}`}>
+									<Icon className="size-5" />
+								</div>
 							</div>
-							<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ring-slate-200/70 ${metric.accent}`}>
-								<Icon className={`size-5 ${metric.iconColor}`} />
-							</div>
-						</div>
-					</div>
+						</motion.div>
 					);
 				})}
 			</div>
@@ -327,11 +420,12 @@ export const OrdersPage = () => {
 								className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-800"
 							>
 								<option value="all">All Statuses</option>
-								<option value="pending">Pending</option>
-								<option value="completed">Completed</option>
-								<option value="paid">Paid</option>
-									<option value="canceled">Canceled</option>
-								</select>
+								{ADMIN_ORDER_STATUS_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
 
 							<select
 								value={sortBy}
@@ -351,12 +445,12 @@ export const OrdersPage = () => {
 
 						<div className="flex items-center gap-2">
 							<div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2 text-xs font-bold text-slate-500">
-								{filteredOrders.length === 0
+								{tableTotalElements === 0
 									? "No orders found"
-									: `Showing ${Math.min(filteredOrders.length, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
+									: `Showing ${Math.min(tableTotalElements, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
 											safeOrderPage * ORDERS_PER_PAGE,
-											filteredOrders.length,
-									  )} of ${filteredOrders.length}`}
+											tableTotalElements,
+									  )} of ${tableTotalElements}`}
 							</div>
 							{totalOrderPages > 1 && (
 								<div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/50 p-0.5 select-none">
@@ -391,12 +485,12 @@ export const OrdersPage = () => {
 
 				<div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3">
 					<div className="text-xs font-bold font-sans text-slate-500">
-						{filteredOrders.length === 0
+						{tableTotalElements === 0
 							? "No orders found"
-							: `Showing ${Math.min(filteredOrders.length, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
+							: `Showing ${Math.min(tableTotalElements, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
 									safeOrderPage * ORDERS_PER_PAGE,
-									filteredOrders.length,
-							  )} of ${filteredOrders.length} orders`}
+									tableTotalElements,
+							  )} of ${tableTotalElements} orders`}
 					</div>
 
 					<div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/50 p-0.5 select-none">
@@ -483,15 +577,28 @@ export const OrdersPage = () => {
 											{formatMoney(order.total || 0)}
 										</td>
 										<td className="px-6 py-4">
-											<Tooltip content={order.shippingAddress || "No address"}>
-												<span className="block max-w-[180px] cursor-help truncate text-xs text-slate-500">
-													{order.shippingAddress || "—"}
-												</span>
+											<Tooltip content={formatShippingDetails(order).tooltipLabel || "No address"}>
+												<div className="max-w-[240px] space-y-0.5">
+													{formatShippingDetails(order).fullAddress ? (
+														<>
+															<p className="truncate text-xs font-semibold text-slate-700">
+																{formatShippingDetails(order).fullAddress}
+															</p>
+															{formatShippingDetails(order).phoneLabel ? (
+																<p className="truncate text-xs text-slate-500">
+																	Phone: {formatShippingDetails(order).phoneLabel}
+																</p>
+															) : null}
+														</>
+													) : (
+														<p className="text-xs text-slate-400">No shipping address</p>
+													)}
+												</div>
 											</Tooltip>
 										</td>
 										<td className="px-6 py-4">
-											<span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getStatusTone(order.status)}`}>
-												{order.status}
+											<span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getOrderStatusMeta(order.status).badgeClass}`}>
+												{getOrderStatusMeta(order.status).label}
 											</span>
 										</td>
 										<td className="px-6 py-4 text-right">
@@ -504,7 +611,7 @@ export const OrdersPage = () => {
 														<Eye className="size-4" />
 													</button>
 												</Tooltip>
-												{order.status !== "CANCELED" && (
+												{canChangeStatus(order.status) && (
 													<Tooltip content="Cancel Order">
 														<button
 															onClick={() => handleCancelOrder(order.id)}
@@ -514,6 +621,19 @@ export const OrdersPage = () => {
 														</button>
 													</Tooltip>
 												)}
+												<select
+								value={normalizeOrderStatus(order.status)}
+								disabled={updatingStatusOrderId === order.id || !canChangeStatus(order.status)}
+								onChange={(e) => handleChangeOrderStatus(order.id, e.target.value)}
+													className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600 outline-none transition-colors hover:border-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+													title="Change order status"
+												>
+													{ADMIN_ORDER_STATUS_OPTIONS.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
 											</div>
 										</td>
 									</tr>
@@ -582,17 +702,42 @@ export const OrdersPage = () => {
 							<h3 className="font-sans text-xl font-semibold text-slate-950">
 								Order <span className="font-mono text-base">{selectedOrder.id.slice(0, 8).toUpperCase()}</span>
 							</h3>
-							<span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getStatusTone(selectedOrder.status)}`}>
-								{selectedOrder.status}
+							<span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${getOrderStatusMeta(selectedOrder.status).badgeClass}`}>
+								{getOrderStatusMeta(selectedOrder.status).label}
 							</span>
 						</div>
 
 						<div className="mb-6 grid gap-6 border-b border-slate-100 pb-5 text-sm sm:grid-cols-2">
 							<div>
 								<span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">Shipping Details</span>
-								<p className="whitespace-pre-line font-bold leading-relaxed text-slate-900">
-									{selectedOrder.shippingAddress || "No shipping address provided."}
-								</p>
+								<div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+									{formatShippingDetails(selectedOrder).fullAddress ? (
+										<>
+											<div className="space-y-1.5">
+												<p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Street</p>
+												<p className="font-semibold text-slate-950">{formatShippingDetails(selectedOrder).street || "-"}</p>
+											</div>
+											<div className="space-y-1.5">
+												<p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">City</p>
+												<p className="font-semibold text-slate-950">{formatShippingDetails(selectedOrder).city || "-"}</p>
+											</div>
+											<div className="space-y-1.5">
+												<p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Country</p>
+												<p className="font-semibold text-slate-950">{formatShippingDetails(selectedOrder).country || "-"}</p>
+											</div>
+											<div className="space-y-1.5">
+												<p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Phone</p>
+												<p className="font-semibold text-slate-950">{formatShippingDetails(selectedOrder).phoneLabel || "-"}</p>
+											</div>
+											<div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+												<p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Full Address</p>
+												<p className="mt-1 font-semibold text-slate-950">{formatShippingDetails(selectedOrder).fullAddress}</p>
+											</div>
+										</>
+									) : (
+										<p className="text-sm font-medium text-slate-500">No shipping address provided.</p>
+									)}
+								</div>
 							</div>
 							<div>
 								<span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">Order Date & Metadata</span>
@@ -619,15 +764,28 @@ export const OrdersPage = () => {
 											<span className="text-xs font-bold text-slate-400">x{item.quantity}</span>
 										</div>
 										<span className="font-semibold text-slate-950">
-											{formatMoney((item.unitPrice || 0) * (item.quantity || 0))}
+											{formatMoney(getOrderItemUnitPrice(item) * (item.quantity || 0))}
 										</span>
 									</div>
 								))}
 							</div>
 						</div>
 
-						<div className="mt-8 flex justify-end gap-3 border-t border-slate-100 pt-6">
-							{selectedOrder.status !== "CANCELED" && (
+						<div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
+							<select
+								value={normalizeOrderStatus(selectedOrder.status)}
+								disabled={updatingStatusOrderId === selectedOrder.id || !canChangeStatus(selectedOrder.status)}
+								onChange={(e) => handleChangeOrderStatus(selectedOrder.id, e.target.value)}
+								className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wider text-slate-600 outline-none transition-colors hover:border-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+								title="Change order status"
+							>
+								{ADMIN_ORDER_STATUS_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
+							{canChangeStatus(selectedOrder.status) && (
 								<Button
 									variant="outline"
 									onClick={() => handleCancelOrder(selectedOrder.id)}

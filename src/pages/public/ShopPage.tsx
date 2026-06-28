@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { Button } from "@/shared/components/ui/button";
@@ -16,7 +16,6 @@ import {
 	ShoppingBagIcon,
 	Heart as HeartIcon
 } from "lucide-react";
-import { useProductStore } from "@/features/products/stores/productStore";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import {
 	productService,
@@ -40,50 +39,26 @@ export const ShopPage = () => {
 	const addBookmark = useBookmarkStore((state) => state.addBookmark);
 	const removeBookmark = useBookmarkStore((state) => state.removeBookmark);
 	const isBookmarked = useBookmarkStore((state) => state.isBookmarked);
-	const { fetchProducts, products, loading: productsLoading } = useProductStore();
 	const user = useAuthStore((state) => state.user);
 
 	const getCategoryLabel = (cat: string) => {
-		if (cat === "All") return t("shop.filterCategory");
-		if (cat === "Protein") return t("homepage.categories.protein");
-		if (cat === "Greens") return t("homepage.categories.greens");
-		if (cat === "Energy") return t("homepage.categories.energy");
-		if (cat === "Recovery") return t("homepage.categories.recovery");
-		if (cat === "Wellness") return t("homepage.categories.wellness");
-		return cat;
+		if (cat === "all") return t("shop.filterCategory");
+		return dbCategories.find((category) => category.id === cat)?.label || cat;
 	};
 
 	useDocumentTitle(`${t("shop.title")} | Zamazor`);
 
-	const [apiProducts, setApiProducts] = useState<Product[]>([]);
-	const [loadingSearch, setLoadingSearch] = useState(false);
-	const [dbCategories, setDbCategories] = useState<string[]>(["All", "Protein", "Greens", "Energy", "Recovery", "Immunity", "Wellness"]);
-
-	useEffect(() => {
-		void fetchProducts();
-	}, [fetchProducts]);
-
-	// Fetch categories from database on mount
-	useEffect(() => {
-		const fetchCategoriesList = async () => {
-			try {
-				const cats = await productService.getCategories();
-				const formatted = ["All", ...cats.map((c: BackendCategory) => c.label)];
-				setDbCategories(formatted);
-			} catch (error) {
-				console.error("Failed to fetch categories:", error);
-			}
-		};
-		fetchCategoriesList();
-	}, []);
-
-	// State variables for filtering & sorting
+	const [products, setProducts] = useState<Product[]>([]);
+	const [loadingProducts, setLoadingProducts] = useState(false);
+	const [totalProducts, setTotalProducts] = useState(0);
+	const [backendTotalPages, setBackendTotalPages] = useState(1);
+	const [dbCategories, setDbCategories] = useState<BackendCategory[]>([]);
 	const searchParams = useMemo(
 		() => new URLSearchParams(location.search),
 		[location.search],
 	);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "All");
+	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
 	const [selectedBadge, setSelectedBadge] = useState<string>("All");
 	const [sortBy, setSortBy] = useState<SortOption>("name-asc");
@@ -92,128 +67,123 @@ export const ShopPage = () => {
 	const ITEMS_PER_PAGE = 6;
 	const [currentPage, setCurrentPage] = useState(1);
 
-	// Fetch products on search query or category/filter change
 	useEffect(() => {
-		const loadSearchProducts = async () => {
-			if (searchQuery.trim() === "") {
-				setApiProducts([]);
-				return;
-			}
-			setLoadingSearch(true);
+		const fetchCategoriesList = async () => {
 			try {
-				const results = await productService.searchProducts(searchQuery);
-				setApiProducts(results);
+				const cats = await productService.getCategories();
+				setDbCategories(cats);
 			} catch (error) {
-				console.error("Failed search query:", error);
-			} finally {
-				setLoadingSearch(false);
+				console.error("Failed to fetch categories:", error);
 			}
 		};
-		loadSearchProducts();
-	}, [searchQuery]);
 
-	// Sync categories if route state changes
+		void fetchCategoriesList();
+	}, []);
+
 	useEffect(() => {
 		const categoryParam = searchParams.get("category");
-		queueMicrotask(() => {
-			setSelectedCategory(categoryParam || "All");
-			setCurrentPage(1);
-		});
-	}, [searchParams]);
+		if (!categoryParam) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect
+			setSelectedCategory("all");
+			return;
+		}
 
-	// Reset to first page when query or filters change
+		const matchedCategory = dbCategories.find(
+			(category) =>
+				category.id === categoryParam ||
+				category.label.toLowerCase() === categoryParam.toLowerCase(),
+		);
+
+		setSelectedCategory(matchedCategory?.id || "all");
+	}, [dbCategories, searchParams]);
+
+	const backendSort = useMemo(() => {
+		if (sortBy === "price-asc") return "price,asc";
+		if (sortBy === "price-desc") return "price,desc";
+		return "name,asc";
+	}, [sortBy]);
+
+	const priceRange = useMemo(() => {
+		if (priceFilter === "under-25") return { minPrice: undefined, maxPrice: 25 };
+		if (priceFilter === "25-40") return { minPrice: 25, maxPrice: 40 };
+		if (priceFilter === "over-40") return { minPrice: 40, maxPrice: undefined };
+		return { minPrice: undefined, maxPrice: undefined };
+	}, [priceFilter]);
+
 	useEffect(() => {
-		queueMicrotask(() => setCurrentPage(1));
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		setCurrentPage(1);
 	}, [searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
 
-	// Get all unique badges/goals for the dropdown filter
+	const loadProducts = useCallback(async () => {
+		setLoadingProducts(true);
+		try {
+			const result = await productService.getProductsPage({
+				page: currentPage,
+				size: ITEMS_PER_PAGE,
+				query: searchQuery.trim() || undefined,
+				categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
+				minPrice: priceRange.minPrice,
+				maxPrice: priceRange.maxPrice,
+				sort: backendSort,
+			});
+
+			setProducts(result.items);
+			setTotalProducts(result.totalElements);
+			setBackendTotalPages(Math.max(1, result.totalPages));
+		} catch (error) {
+			console.error("Failed to load products:", error);
+			setProducts([]);
+			setTotalProducts(0);
+			setBackendTotalPages(1);
+		} finally {
+			setLoadingProducts(false);
+		}
+	}, [backendSort, currentPage, priceRange.maxPrice, priceRange.minPrice, searchQuery, selectedCategory]);
+
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		void loadProducts();
+	}, [loadProducts]);
+
 	const uniqueBadges = useMemo(() => {
-		const source = searchQuery.trim() !== "" ? apiProducts : products;
 		const badgesSet = new Set<string>();
-		source.forEach((p) => {
+		products.forEach((p) => {
 			if (p.badge) badgesSet.add(p.badge);
 		});
 		return ["All", ...Array.from(badgesSet)];
-	}, [apiProducts, products, searchQuery]);
+	}, [products]);
 
 	// Filter & Sort Logic
 	const filteredProducts = useMemo(() => {
-		let result = searchQuery.trim() !== "" ? apiProducts : products;
-
-		// 2. Filter by Category
-		if (selectedCategory !== "All") {
-			result = result.filter((p) => p.category === selectedCategory);
-		}
-
-		// 3. Filter by Price
-		if (priceFilter === "under-25") {
-			result = result.filter((p) => {
-				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
-				return numeric < 25;
-			});
-		} else if (priceFilter === "25-40") {
-			result = result.filter((p) => {
-				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
-				return numeric >= 25 && numeric <= 40;
-			});
-		} else if (priceFilter === "over-40") {
-			result = result.filter((p) => {
-				const numeric = parseFloat(p.price.replace(/[^\d.]/g, ""));
-				return numeric > 40;
-			});
-		}
-
-		// 4. Filter by Badge/Goal
+		let result = [...products];
 		if (selectedBadge !== "All") {
 			result = result.filter((p) => p.badge === selectedBadge);
 		}
-
-		// 5. Sort
-		result = [...result];
-		if (sortBy === "name-asc") {
-			result.sort((a, b) => a.name.localeCompare(b.name));
-		} else if (sortBy === "price-asc") {
-			result.sort((a, b) => {
-				const pA = parseFloat(a.price.replace(/[^\d.]/g, ""));
-				const pB = parseFloat(b.price.replace(/[^\d.]/g, ""));
-				return pA - pB;
-			});
-		} else if (sortBy === "price-desc") {
-			result.sort((a, b) => {
-				const pA = parseFloat(a.price.replace(/[^\d.]/g, ""));
-				const pB = parseFloat(b.price.replace(/[^\d.]/g, ""));
-				return pB - pA;
-			});
-		}
-
 		return result;
-	}, [apiProducts, products, searchQuery, selectedCategory, priceFilter, selectedBadge, sortBy]);
+	}, [products, selectedBadge]);
 
-	const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+	const totalPages = Math.max(1, backendTotalPages);
 
 	useEffect(() => {
-		queueMicrotask(() => {
-			setCurrentPage((page) => Math.min(page, totalPages));
-		});
-	}, [totalPages]);
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+	setCurrentPage((page) => Math.min(page, totalPages));
+}, [totalPages]);
 
-	const paginatedProducts = useMemo(() => {
-		const start = (currentPage - 1) * ITEMS_PER_PAGE;
-		return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
-	}, [filteredProducts, currentPage]);
+	const paginatedProducts = filteredProducts;
 
 	const countMessage = useMemo(() => {
-		if (filteredProducts.length === 0) return language === "fr" ? "Affichage de 0 formules propres" : "Showing 0 clean formulas";
-		const start = (currentPage - 1) * ITEMS_PER_PAGE;
-		const end = Math.min(start + ITEMS_PER_PAGE, filteredProducts.length);
-		return language === "fr" 
-			? `Affichage de ${start + 1}–${end} sur ${filteredProducts.length} formules propres`
-			: `Showing ${start + 1}–${end} of ${filteredProducts.length} clean formulas`;
-	}, [filteredProducts.length, currentPage, language]);
+	if (totalProducts === 0) return language === "fr" ? "Affichage de 0 formules propres" : "Showing 0 clean formulas";
+	const start = (currentPage - 1) * ITEMS_PER_PAGE;
+	const end = Math.min(start + paginatedProducts.length, totalProducts);
+	return language === "fr"
+		? `Affichage de ${Math.min(start + 1, totalProducts)}–${end} sur ${totalProducts} formules propres`
+		: `Showing ${Math.min(start + 1, totalProducts)}–${end} of ${totalProducts} clean formulas`;
+}, [currentPage, language, paginatedProducts.length, totalProducts]);
 
 	const handleResetFilters = () => {
 		setSearchQuery("");
-		setSelectedCategory("All");
+		setSelectedCategory("all");
 		setPriceFilter("all");
 		setSelectedBadge("All");
 		setSortBy("name-asc");
@@ -274,17 +244,17 @@ export const ShopPage = () => {
 								<div className="flex flex-col gap-1.5">
 									{dbCategories.map((cat) => (
 										<button
-											key={cat}
-											onClick={() => setSelectedCategory(cat)}
+											key={cat.id}
+											onClick={() => setSelectedCategory(cat.id)}
 											className={cn(
 												"flex items-center justify-between text-left text-sm py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer",
-												selectedCategory === cat
+												selectedCategory === cat.id
 													? "bg-emerald-50 text-emerald-900 font-bold"
 													: "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
 											)}
 										>
-											<span>{getCategoryLabel(cat)}</span>
-											{selectedCategory === cat && <Check className="size-3.5 text-emerald-800" />}
+											<span>{cat.label}</span>
+											{selectedCategory === cat.id && <Check className="size-3.5 text-emerald-800" />}
 										</button>
 									))}
 								</div>
@@ -403,7 +373,7 @@ export const ShopPage = () => {
 							</div>
 
 							{/* Active filter badges display */}
-							{(selectedCategory !== "All" || priceFilter !== "all" || selectedBadge !== "All" || searchQuery !== "") && (
+							{(selectedCategory !== "all" || priceFilter !== "all" || selectedBadge !== "All" || searchQuery !== "") && (
 								<div className="flex flex-wrap gap-2 items-center">
 									<span className="text-xs font-bold text-slate-400 mr-1 uppercase">{language === "fr" ? "Filtres actifs:" : "Active filters:"}</span>
 									{searchQuery && (
@@ -412,10 +382,10 @@ export const ShopPage = () => {
 											<X className="size-3 text-slate-500 hover:text-slate-800 cursor-pointer" onClick={() => setSearchQuery("")} />
 										</span>
 									)}
-									{selectedCategory !== "All" && (
+									{selectedCategory !== "all" && (
 										<span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-900 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-900/10">
-											{selectedCategory}
-											<X className="size-3 text-emerald-700 hover:text-emerald-900 cursor-pointer" onClick={() => setSelectedCategory("All")} />
+											{getCategoryLabel(selectedCategory)}
+											<X className="size-3 text-emerald-700 hover:text-emerald-900 cursor-pointer" onClick={() => setSelectedCategory("all")} />
 										</span>
 									)}
 									{priceFilter !== "all" && (
@@ -434,7 +404,7 @@ export const ShopPage = () => {
 							)}
 
 							{/* Product Grid */}
-							{loadingSearch || (productsLoading && products.length === 0 && searchQuery.trim() === "") ? (
+							{loadingProducts ? (
 								<div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
 									{[...Array(6)].map((_, i) => (
 										<div key={i} className="rounded-3xl border border-emerald-950/5 bg-white p-4 shadow-sm animate-pulse space-y-4">
@@ -628,16 +598,16 @@ export const ShopPage = () => {
 								<div className="flex flex-wrap gap-1.5">
 									{dbCategories.map((cat) => (
 										<button
-											key={cat}
-											onClick={() => setSelectedCategory(cat)}
+											key={cat.id}
+											onClick={() => setSelectedCategory(cat.id)}
 											className={cn(
 												"text-xs font-bold px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
-												selectedCategory === cat
+												selectedCategory === cat.id
 													? "bg-emerald-900 text-white border-emerald-900 shadow-sm"
 													: "bg-white text-emerald-800 border-emerald-900/10 hover:bg-emerald-50"
 											)}
 										>
-											{getCategoryLabel(cat)}
+											{cat.label}
 										</button>
 									))}
 								</div>
@@ -692,3 +662,7 @@ export const ShopPage = () => {
 		</>
 	);
 };
+
+
+
+

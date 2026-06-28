@@ -12,8 +12,11 @@ import { OriginButton } from "@/shared/components/ui/origin-button";
 import logo from "@/assets/images/zamazor.svg";
 import { toast } from "sonner";
 import { orderService } from "@/features/orders/services/orderService";
+import { addressService } from "@/features/addresses/services/addressService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { useLanguage } from "@/shared/context/LanguageContext";
+import { parsePrice } from "@/shared/utils/price";
+import { buildShippingAddressString, toAddressFormValues } from "@/features/addresses/utils/addressHelpers";
 import {
 	ArrowLeft,
 	CreditCard,
@@ -40,7 +43,15 @@ export const CheckoutPage = () => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isSuccess, setIsSuccess] = useState(false);
 	const [orderNumber, setOrderNumber] = useState("");
+	const [completedOrderTotal, setCompletedOrderTotal] = useState<number | null>(null);
 	const user = useAuthStore((state) => state.user);
+
+	const formatCardNumberInput = (value: string) => value.replace(/\D/g, "").slice(0, 16);
+	const formatExpiryInput = (value: string) => {
+		const digits = value.replace(/\D/g, "").slice(0, 4);
+		if (digits.length <= 2) return digits;
+		return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+	};
 
 	const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm<CheckoutFormValues>({
 		resolver: zodResolver(checkoutSchema),
@@ -50,7 +61,6 @@ export const CheckoutPage = () => {
 			lastName: "",
 			address: "",
 			city: "",
-			zip: "",
 			phone: "",
 			country: "Morocco",
 			cardNumber: "",
@@ -60,41 +70,33 @@ export const CheckoutPage = () => {
 	});
 
 	useEffect(() => {
-		if (user) {
+		let active = true;
+
+		const loadAddress = async () => {
+			if (!user) return;
+
 			if (user.email) setValue("email", user.email);
 			if (user.fullName) {
 				const names = user.fullName.trim().split(/\s+/);
 				setValue("firstName", names[0] || "");
 				setValue("lastName", names.slice(1).join(" ") || "");
 			}
-			if (user.shippingAddress) {
-				const parts = user.shippingAddress.split(",").map((p) => p.trim());
-				
-				// Find and extract phone if present
-				const phonePart = parts.find(p => p.toLowerCase().startsWith("phone:"));
-				if (phonePart) {
-					const phoneVal = phonePart.split(":")[1]?.trim() || "";
-					setValue("phone", phoneVal);
-				}
 
-				// Filter out the phone and country parts to parse address/city/zip
-				const cleanParts = parts.filter(p => 
-					!p.toLowerCase().startsWith("phone:") && 
-					p.toLowerCase() !== "morocco"
-				);
+			const backendAddress = await addressService.getDefaultAddress();
+			if (!active) return;
 
-				if (cleanParts.length >= 3) {
-					setValue("address", cleanParts[0] || "");
-					setValue("city", cleanParts[1] || "");
-					setValue("zip", cleanParts[2] || "");
-				} else if (cleanParts.length === 2) {
-					setValue("address", cleanParts[0] || "");
-					setValue("city", cleanParts[1] || "");
-				} else {
-					setValue("address", cleanParts[0] || "");
-				}
-			}
-		}
+			const source = toAddressFormValues(backendAddress, user.shippingAddress);
+			setValue("address", source.street);
+			setValue("city", source.city);
+			setValue("phone", source.phone);
+			setValue("country", source.country || "Morocco");
+		};
+
+		loadAddress();
+
+		return () => {
+			active = false;
+		};
 	}, [user, setValue]);
 
 	useDocumentTitle(`${t("checkout.title")} | Zamazor`);
@@ -109,14 +111,35 @@ export const CheckoutPage = () => {
 
 		try {
 			const auth = useAuthStore.getState();
-			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}, Morocco, Phone: ${data.phone}`;
-			const response = await orderService.checkout({
-				country: "Morocco",
+			const shippingAddress = buildShippingAddressString({
+				street: data.address,
 				city: data.city,
-				street: `${data.address}, Phone: ${data.phone}`,
+				phone: data.phone,
+				country: data.country,
+			});
+			const response = await orderService.checkout({
+				country: data.country,
+				city: data.city,
+				street: data.address,
 				phone: data.phone,
 				isDefault: true,
 			});
+
+			const existingAddress = await addressService.getDefaultAddress();
+			const addressPayload = {
+				country: data.country,
+				city: data.city,
+				street: data.address,
+				phone: data.phone,
+				isDefault: true,
+			};
+			const savedAddress = existingAddress
+				? await addressService.updateDefaultAddress(addressPayload)
+				: await addressService.createDefaultAddress(addressPayload);
+
+			if (!savedAddress) {
+				toast.error(language === "fr" ? "Adresse non enregistrée." : "Address could not be saved.");
+			}
 
 			// Update local auth store so the saved shipping address is stored and pre-filled next time
 			if (auth.user) {
@@ -128,6 +151,7 @@ export const CheckoutPage = () => {
 				});
 			}
 
+			setCompletedOrderTotal(Number.isFinite(response.total) ? response.total : orderTotal);
 			setIsSubmitting(false);
 			clearCart();
 			setIsSuccess(true);
@@ -158,6 +182,8 @@ export const CheckoutPage = () => {
 	}
 
 	if (isSuccess) {
+		const finalOrderTotal = completedOrderTotal ?? orderTotal;
+
 		return (
 			<div className="min-h-screen bg-[#fcfdfa] flex flex-col items-center justify-center p-4">
 				<div className="max-w-md w-full bg-white rounded-3xl border border-emerald-900/10 p-6 sm:p-8 text-center shadow-xl shadow-emerald-950/5">
@@ -178,7 +204,7 @@ export const CheckoutPage = () => {
 						</div>
 						<div className="flex justify-between">
 							<span className="text-slate-500">{language === "fr" ? "Total de la commande:" : "Order Total:"}</span>
-							<span className="font-extrabold text-emerald-900">{orderTotal.toFixed(2)} MAD</span>
+							<span className="font-extrabold text-emerald-900">{finalOrderTotal.toFixed(2)} MAD</span>
 						</div>
 					</div>
 
@@ -308,9 +334,9 @@ export const CheckoutPage = () => {
 										{errors.address && (
 											<p className="text-xs text-rose-600 mt-1 font-bold">{errors.address.message}</p>
 										)}
-									</div>
+										</div>
  
-									<div className="grid grid-cols-2 gap-3">
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 										<div>
 											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.city")}</label>
 											<Input
@@ -324,32 +350,25 @@ export const CheckoutPage = () => {
 											)}
 										</div>
 										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.zip")}</label>
-											<Input
-												type="text"
-												placeholder="94103"
-												{...register("zip")}
-												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
-											/>
-											{errors.zip && (
-												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.zip.message}</p>
-											)}
-										</div>
-									</div>
-
-									<div className="grid grid-cols-2 gap-3">
-										<div>
 											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.phone")}</label>
-											<Input
-												type="tel"
-												placeholder="+212 600-000000"
-												{...register("phone")}
-												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
-											/>
+											<div className="flex gap-2">
+												<div className="flex h-11 items-center gap-2 rounded-xl border border-emerald-900/10 bg-slate-50 px-3 text-sm font-black text-slate-700 shrink-0">
+													<span aria-hidden="true" className="text-base leading-none">🇲🇦</span>
+													<span>+212</span>
+												</div>
+												<Input
+													type="tel"
+													placeholder="600-000000"
+													{...register("phone")}
+													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
+												/>
+											</div>
 											{errors.phone && (
 												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.phone.message}</p>
 											)}
 										</div>
+									</div>
+									<div className="grid gap-3">
 										<div>
 											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.country")}</label>
 											<Input
@@ -385,7 +404,14 @@ export const CheckoutPage = () => {
 											<Input
 												type="text"
 												placeholder="4111 2222 3333 4444"
-												{...register("cardNumber")}
+												inputMode="numeric"
+												maxLength={16}
+												{...register("cardNumber", {
+													onChange: (e) => {
+														const next = formatCardNumberInput(e.target.value);
+														setValue("cardNumber", next, { shouldDirty: true, shouldValidate: true });
+													},
+												})}
 												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
 											/>
 											{errors.cardNumber && (
@@ -399,7 +425,14 @@ export const CheckoutPage = () => {
 												<Input
 													type="text"
 													placeholder="MM/YY"
-													{...register("cardExpiry")}
+													inputMode="numeric"
+													maxLength={5}
+													{...register("cardExpiry", {
+														onChange: (e) => {
+															const next = formatExpiryInput(e.target.value);
+															setValue("cardExpiry", next, { shouldDirty: true, shouldValidate: true });
+														},
+													})}
 													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
 												/>
 												{errors.cardExpiry && (
@@ -451,7 +484,7 @@ export const CheckoutPage = () => {
 
 								{/* Items list */}
 								<div className="max-h-[220px] overflow-y-auto pr-1 divide-y divide-slate-100 scrollbar-none mb-4">
-									{items.map(({ product, quantity }) => (
+								{items.map(({ product, quantity }) => (
 										<div key={product.id} className="flex gap-3 py-3 items-center justify-between first:pt-0 last:pb-0">
 											<div className="flex gap-3 items-center min-w-0">
 												<div className="size-12 shrink-0 bg-slate-50 border border-emerald-900/5 rounded-xl flex items-center justify-center p-1">
@@ -463,10 +496,7 @@ export const CheckoutPage = () => {
 												</div>
 											</div>
 											<span className="text-xs font-bold text-slate-900 shrink-0">
-												{product && typeof product.price === "string"
-													? (parseFloat(product.price.replace(/[^0-9.]/g, "")) * quantity).toFixed(2)
-													: "0.00"
-												} MAD
+												{(parsePrice(product.price) * quantity).toFixed(2)} MAD
 											</span>
 										</div>
 									))}
