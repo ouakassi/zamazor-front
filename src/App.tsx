@@ -7,6 +7,7 @@ import { userService } from "./features/auth/services/usersService";
 import { tokenManager } from "./features/auth/globals/tokenManager";
 import { useAuthStore } from "./features/auth/stores/authStore";
 import { AuthStatus } from "./features/auth/types";
+import { LanguageProvider } from "./shared/context/LanguageContext";
 
 function App() {
 	useEffect(() => {
@@ -19,10 +20,10 @@ function App() {
 	}, []);
 
 	return (
-		<>
+		<LanguageProvider>
 			<RouterProvider router={router} />
 			<Toaster position="bottom-left" />
-		</>
+		</LanguageProvider>
 	);
 }
 

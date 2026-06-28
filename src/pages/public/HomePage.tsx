@@ -44,6 +44,7 @@ import { useProductStore } from "@/features/products/stores/productStore";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { toast } from "sonner";
+import { useLanguage } from "@/shared/context/LanguageContext";
 
 
 const heroSlides = [
@@ -302,6 +303,7 @@ function IconLabel({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 
 export const HomePage = () => {
 	const navigate = useNavigate();
+	const { t } = useLanguage();
 	const addItem = useCartStore((state) => state.addItem);
 	const addBookmark = useBookmarkStore((state) => state.addBookmark);
 	const removeBookmark = useBookmarkStore((state) => state.removeBookmark);
@@ -444,7 +446,7 @@ export const HomePage = () => {
 										className="mb-5 inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-950/55 px-3.5 py-1.5 text-sm font-bold text-emerald-300 shadow-sm backdrop-blur-sm"
 									>
 										<span className={cn("size-2 rounded-full", slide.accent)} />
-										{slide.kicker}
+										{t(`homepage.hero.badge${activeSlide + 1}`)}
 									</motion.div>
 
 									{/* title */}
@@ -456,7 +458,7 @@ export const HomePage = () => {
 										}}
 										className="text-4xl font-playfair font-normal leading-[1.05] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl"
 									>
-										{slide.title}
+										{t(`homepage.hero.title${activeSlide + 1}`)}
 									</motion.h1>
 
 									{/* copy */}
@@ -468,7 +470,7 @@ export const HomePage = () => {
 										}}
 										className="mt-6 text-base sm:text-lg leading-relaxed text-emerald-50/85"
 									>
-										{slide.copy}
+										{t(`homepage.hero.desc${activeSlide + 1}`)}
 									</motion.p>
 
 									{/* CTA Buttons */}
@@ -482,12 +484,12 @@ export const HomePage = () => {
 									>
 										<Button asChild size="lg" className="h-12 bg-emerald-500 text-emerald-950 font-extrabold px-6 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20">
 											<a href="#products">
-												Shop Now
+												{t("homepage.hero.shopNow")}
 												<ArrowRightIcon className="ml-2 size-4" />
 											</a>
 										</Button>
 										<Button asChild variant="outline" size="lg" className="h-12 border-white/20 bg-white/10 text-white font-extrabold px-6 hover:bg-white/20 hover:text-white backdrop-blur-sm">
-											<a href="#stack">Find your routine</a>
+											<a href="#stack">{t("homepage.hero.quiz")}</a>
 										</Button>
 									</motion.div>
 								</motion.div>
