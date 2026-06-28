@@ -2,6 +2,7 @@ import { type Product } from "@/core/config/productsData";
 import { isSystemError } from "@/shared/types";
 import { CONFIG } from "@/core/config/constants";
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
+import { publicApiRequest } from "@/shared/utils/axiosPublic";
 
 
 
@@ -159,12 +160,11 @@ export function mapBackendProduct(backendProd: BackendProduct): Product {
 
 export const productService = {
 	getProducts: async (): Promise<Product[]> => {
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<any>(
 			{
 				url: "/products?size=100",
 				method: "GET",
 			},
-			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -187,12 +187,11 @@ export const productService = {
 			return null;
 		}
 
-		const response = await privateApiRequest<BackendProduct>(
+		const response = await publicApiRequest<BackendProduct>(
 			{
 				url: `/products/${id}`,
 				method: "GET",
 			},
-			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -212,12 +211,11 @@ export const productService = {
 			return [];
 		}
 
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<any>(
 			{
 				url: `/products/category/${categoryId}?size=100`,
 				method: "GET",
 			},
-			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -236,12 +234,11 @@ export const productService = {
 	},
 
 	searchProducts: async (query: string): Promise<Product[]> => {
-		const response = await privateApiRequest<any>(
+		const response = await publicApiRequest<any>(
 			{
 				url: `/products/search?q=${encodeURIComponent(query)}`,
 				method: "GET",
 			},
-			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
@@ -260,12 +257,11 @@ export const productService = {
 	},
 
 	getCategories: async (): Promise<BackendCategory[]> => {
-		const response = await privateApiRequest<BackendCategory[]>(
+		const response = await publicApiRequest<BackendCategory[]>(
 			{
 				url: "/categories",
 				method: "GET",
 			},
-			{ ignoreErrors: true }
 		);
 
 		if (isSystemError(response)) {
