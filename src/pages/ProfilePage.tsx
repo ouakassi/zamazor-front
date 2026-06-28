@@ -59,6 +59,8 @@ export const ProfilePage = () => {
 			street: "",
 			city: "",
 			zip: "",
+			phone: "",
+			country: "Morocco",
 		}
 	});
 
@@ -69,27 +71,29 @@ export const ProfilePage = () => {
 
 			if (user.shippingAddress) {
 				const parts = user.shippingAddress.split(",").map((p) => p.trim());
-				if (parts.length >= 4) {
-					const names = user.fullName.trim().split(/\s+/);
-					const hasNamePrefix = parts[0].toLowerCase().includes(user.fullName.toLowerCase()) || 
-					                     parts[0].toLowerCase().includes((names[0] || "").toLowerCase());
-					if (hasNamePrefix) {
-						setValue("street", parts[1] || "");
-						setValue("city", parts[2] || "");
-						setValue("zip", parts[3] || "");
-					} else {
-						setValue("street", parts[0] || "");
-						setValue("city", parts[1] || "");
-						setValue("zip", parts[2] || "");
-					}
-				} else if (parts.length === 3) {
-					setValue("street", parts[0] || "");
-					setValue("city", parts[1] || "");
-					setValue("zip", parts[2] || "");
+				
+				// Find and extract phone if present
+				const phonePart = parts.find(p => p.toLowerCase().startsWith("phone:"));
+				if (phonePart) {
+					const phoneVal = phonePart.split(":")[1]?.trim() || "";
+					setValue("phone", phoneVal);
+				}
+
+				// Filter out the phone and country parts to parse street/city/zip
+				const cleanParts = parts.filter(p => 
+					!p.toLowerCase().startsWith("phone:") && 
+					p.toLowerCase() !== "morocco"
+				);
+
+				if (cleanParts.length >= 3) {
+					setValue("street", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
+					setValue("zip", cleanParts[2] || "");
+				} else if (cleanParts.length === 2) {
+					setValue("street", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
 				} else {
-					setValue("street", user.shippingAddress);
-					setValue("city", "");
-					setValue("zip", "");
+					setValue("street", cleanParts[0] || "");
 				}
 			}
 		}
@@ -117,10 +121,10 @@ export const ProfilePage = () => {
 	const handleProfileSubmit = async (data: ProfileFormValues) => {
 		setIsSaving(true);
 		try {
-			// Construct shipping address format: Street, City, ZIP
+			// Construct shipping address format: Street, City, ZIP, Country, Phone
 			let shippingAddress: string | null = null;
-			if (data.street?.trim() || data.city?.trim() || data.zip?.trim()) {
-				shippingAddress = `${(data.street || "").trim()}, ${(data.city || "").trim()}, ${(data.zip || "").trim()}`;
+			if (data.street?.trim() || data.city?.trim() || data.zip?.trim() || data.phone?.trim()) {
+				shippingAddress = `${(data.street || "").trim()}, ${(data.city || "").trim()}, ${(data.zip || "").trim()}, Morocco, Phone: ${(data.phone || "").trim()}`;
 			}
 
 			const result = await userService.updateCurrentUser({
@@ -299,6 +303,32 @@ export const ProfilePage = () => {
 													placeholder="94103"
 													{...register("zip")}
 													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
+												/>
+											</div>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">
+													Phone Number
+												</label>
+												<Input
+													type="tel"
+													placeholder="+212 600-000000"
+													{...register("phone")}
+													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
+												/>
+											</div>
+											<div>
+												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">
+													Country
+												</label>
+												<Input
+													type="text"
+													value="Morocco"
+													disabled
+													{...register("country")}
+													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-slate-50 text-slate-500 cursor-not-allowed"
 												/>
 											</div>
 										</div>

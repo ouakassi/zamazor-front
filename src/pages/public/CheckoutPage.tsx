@@ -49,6 +49,8 @@ export const CheckoutPage = () => {
 			address: "",
 			city: "",
 			zip: "",
+			phone: "",
+			country: "Morocco",
 			cardNumber: "",
 			cardExpiry: "",
 			cardCvv: "",
@@ -65,24 +67,29 @@ export const CheckoutPage = () => {
 			}
 			if (user.shippingAddress) {
 				const parts = user.shippingAddress.split(",").map((p) => p.trim());
-				if (parts.length >= 4) {
-					const hasNamePrefix = parts[0].toLowerCase().includes(user.fullName.toLowerCase()) || 
-					                     parts[0].toLowerCase().includes((user.fullName.trim().split(/\s+/)[0] || "").toLowerCase());
-					if (hasNamePrefix) {
-						setValue("address", parts[1] || "");
-						setValue("city", parts[2] || "");
-						setValue("zip", parts[3] || "");
-					} else {
-						setValue("address", parts[0] || "");
-						setValue("city", parts[1] || "");
-						setValue("zip", parts[2] || "");
-					}
-				} else if (parts.length === 3) {
-					setValue("address", parts[0] || "");
-					setValue("city", parts[1] || "");
-					setValue("zip", parts[2] || "");
+				
+				// Find and extract phone if present
+				const phonePart = parts.find(p => p.toLowerCase().startsWith("phone:"));
+				if (phonePart) {
+					const phoneVal = phonePart.split(":")[1]?.trim() || "";
+					setValue("phone", phoneVal);
+				}
+
+				// Filter out the phone and country parts to parse address/city/zip
+				const cleanParts = parts.filter(p => 
+					!p.toLowerCase().startsWith("phone:") && 
+					p.toLowerCase() !== "morocco"
+				);
+
+				if (cleanParts.length >= 3) {
+					setValue("address", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
+					setValue("zip", cleanParts[2] || "");
+				} else if (cleanParts.length === 2) {
+					setValue("address", cleanParts[0] || "");
+					setValue("city", cleanParts[1] || "");
 				} else {
-					setValue("address", user.shippingAddress);
+					setValue("address", cleanParts[0] || "");
 				}
 			}
 		}
@@ -100,11 +107,11 @@ export const CheckoutPage = () => {
 
 		try {
 			const auth = useAuthStore.getState();
-			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}`;
+			const shippingAddress = `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.zip}, Morocco, Phone: ${data.phone}`;
 			const response = await orderService.checkout({
 				country: "Morocco",
 				city: data.city,
-				street: data.address,
+				street: `${data.address}, Phone: ${data.phone}`,
 				isDefault: true,
 			});
 
@@ -323,6 +330,31 @@ export const CheckoutPage = () => {
 											{errors.zip && (
 												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.zip.message}</p>
 											)}
+										</div>
+									</div>
+
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Phone Number</label>
+											<Input
+												type="tel"
+												placeholder="+212 600-000000"
+												{...register("phone")}
+												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
+											/>
+											{errors.phone && (
+												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.phone.message}</p>
+											)}
+										</div>
+										<div>
+											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">Country</label>
+											<Input
+												type="text"
+												value="Morocco"
+												disabled
+												{...register("country")}
+												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-slate-50 text-slate-500 cursor-not-allowed"
+											/>
 										</div>
 									</div>
 								</div>
