@@ -10,14 +10,11 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { productService, type BackendCategory } from "@/features/products/services/productService";
 import { useProductStore } from "@/features/products/stores/productStore";
 import {
-	Blocks,
 	Edit,
 	FolderKanban,
-	Package,
 	Plus,
 	RefreshCw,
 	Search,
-	Tag,
 	Trash2,
 	X,
 } from "lucide-react";
@@ -234,29 +231,6 @@ export const CategoriesPage = () => {
 		safePage * CATEGORIES_PER_PAGE,
 	);
 
-	const totalProductsLinked = useMemo(
-		() => Array.from(categoryCounts.values()).reduce((sum, count) => sum + count, 0),
-		[categoryCounts],
-	);
-
-	const categoriesInUse = useMemo(
-		() => categories.filter((category) => (categoryCounts.get(category.label.trim().toLowerCase()) || 0) > 0).length,
-		[categories, categoryCounts],
-	);
-
-	const topCategory = useMemo(() => {
-		let bestLabel = "";
-		let bestCount = 0;
-		for (const category of categories) {
-			const count = categoryCounts.get(category.label.trim().toLowerCase()) || 0;
-			if (count > bestCount) {
-				bestCount = count;
-				bestLabel = category.label;
-			}
-		}
-		return { label: bestLabel, count: bestCount };
-	}, [categories, categoryCounts]);
-
 	if (loading) {
 		return (
 			<div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
@@ -298,24 +272,6 @@ export const CategoriesPage = () => {
 						icon: FolderKanban,
 						accent: "bg-emerald-50 text-emerald-800",
 					},
-					{
-						label: "Linked Products",
-						value: formatCount(totalProductsLinked),
-						icon: Package,
-						accent: "bg-teal-50 text-teal-800",
-					},
-					{
-						label: "Categories In Use",
-						value: formatCount(categoriesInUse),
-						icon: Blocks,
-						accent: "bg-lime-50 text-lime-800",
-					},
-					{
-						label: "Top Category",
-						value: topCategory.label || "None",
-						icon: Tag,
-						accent: "bg-amber-50 text-amber-800",
-					},
 				].map((metric, index) => {
 					const Icon = metric.icon;
 					return (
@@ -329,19 +285,7 @@ export const CategoriesPage = () => {
 								<div className="min-w-0">
 									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
 									<h3 className="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
-									{metric.label === "Top Category" ? (
-										<p className="mt-1 text-xs text-slate-500">
-											{topCategory.count > 0 ? `${topCategory.count} products` : "No category activity yet"}
-										</p>
-									) : (
-										<p className="mt-1 text-xs text-slate-500">
-											{metric.label === "Total Categories"
-												? "Across the catalog"
-												: metric.label === "Linked Products"
-													? "Product mappings"
-													: "Assigned to products"}
-										</p>
-									)}
+									<p className="mt-1 text-xs text-slate-500">Across the catalog</p>
 								</div>
 								<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ${metric.accent}`}>
 									<Icon className="size-5" />

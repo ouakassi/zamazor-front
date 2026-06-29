@@ -43,6 +43,14 @@ const normalizeOrderStatus = (status: string) => {
 	return ORDER_STATUSES.includes(upper as (typeof ORDER_STATUSES)[number]) ? upper : "PENDING";
 };
 
+const getOrderSortParam = (sortBy: string) => {
+	if (sortBy === "oldest") return ["createdAt,asc", "id,asc"];
+	if (sortBy === "total-asc") return ["total,asc", "createdAt,desc"];
+	if (sortBy === "total-desc") return ["total,desc", "createdAt,desc"];
+	if (sortBy === "status") return ["status,asc", "createdAt,desc"];
+	return ["createdAt,desc", "id,asc"];
+};
+
 const ADMIN_ORDER_STATUS_OPTIONS = ORDER_STATUS_OPTIONS.filter((option) => option.value !== "CANCELED");
 
 const formatShippingDetails = (order: BackendOrder | null | undefined) => {
@@ -93,6 +101,7 @@ export const OrdersPage = () => {
 				page: orderPage,
 				size: ORDERS_PER_PAGE,
 				status: statusFilter !== "all" ? statusFilter : undefined,
+				sort: getOrderSortParam(sortBy),
 			});
 
 			setTableOrders(result.items);
@@ -104,7 +113,7 @@ export const OrdersPage = () => {
 			setTableTotalElements(0);
 			setTableTotalPages(1);
 		}
-	}, [orderPage, statusFilter]);
+	}, [orderPage, sortBy, statusFilter]);
 
 	const loadData = useCallback(async () => {
 		setLoading(true);
@@ -232,7 +241,7 @@ export const OrdersPage = () => {
 	const normalizedSearch = orderSearch.trim().toLowerCase();
 
 	const filteredOrders = useMemo(() => {
-		const nextOrders = tableOrders.filter((order) => {
+		return tableOrders.filter((order) => {
 			if (!normalizedSearch) return true;
 
 			const itemMatch = order.items.some((item) =>
@@ -245,28 +254,8 @@ export const OrdersPage = () => {
 				order.status.toLowerCase().includes(normalizedSearch) ||
 				itemMatch
 			);
-		}).sort((a, b) => {
-			if (sortBy === "oldest") {
-				return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-			}
-
-			if (sortBy === "total-asc") {
-				return (a.total || 0) - (b.total || 0);
-			}
-
-			if (sortBy === "total-desc") {
-				return (b.total || 0) - (a.total || 0);
-			}
-
-			if (sortBy === "status") {
-				return a.status.localeCompare(b.status);
-			}
-
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 		});
-
-		return nextOrders;
-	}, [normalizedSearch, tableOrders, sortBy]);
+	}, [normalizedSearch, tableOrders]);
 
 	const totalOrderPages = tableTotalPages;
 	const safeOrderPage = Math.min(orderPage, totalOrderPages);

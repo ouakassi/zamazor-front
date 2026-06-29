@@ -66,6 +66,7 @@ export interface OrderPageQueryParams {
 	size?: number;
 	status?: string;
 	userFullName?: string;
+	sort?: string | string[];
 }
 
 export interface PaginatedOrdersResult {
@@ -114,12 +115,21 @@ function extractPaginatedOrders(response: unknown, fallbackPage = 1, fallbackSiz
 	};
 }
 
-function buildQueryString(params: Record<string, string | number | undefined>) {
+function buildQueryString(params: Record<string, string | number | Array<string | number> | undefined>) {
 	const query = new URLSearchParams();
 
 	Object.entries(params).forEach(([key, value]) => {
 		if (value === undefined || value === null || value === "") return;
-		query.set(key, String(value));
+
+		if (Array.isArray(value)) {
+			value.forEach((entry) => {
+				if (entry === undefined || entry === null || entry === "") return;
+				query.append(key, String(entry));
+			});
+			return;
+		}
+
+		query.append(key, String(value));
 	});
 
 	return query.toString();
@@ -131,6 +141,7 @@ export const orderService = {
 			const queryString = buildQueryString({
 				page: Math.max(0, (params.page ?? 1) - 1),
 				size: params.size,
+				sort: params.sort,
 			});
 			const response = await privateApiRequest<BackendOrder[]>({
 				url: `${API_ENDPOINTS.ORDERS.ME}${queryString ? `?${queryString}` : ""}`,
@@ -173,6 +184,7 @@ export const orderService = {
 				size: params.size,
 				status: params.status,
 				userFullName: params.userFullName,
+				sort: params.sort,
 			});
 			const response = await privateApiRequest<BackendOrder[]>({
 				url: `${API_ENDPOINTS.ORDERS.ROOT}${queryString ? `?${queryString}` : ""}`,

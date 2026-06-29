@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { type Product } from "@/core/config/productsData";
+import type { Product } from "../../../core/config/productsData";
 import { tokenManager } from "@/features/auth/globals/tokenManager";
 import { wishlistService } from "@/features/products/services/wishlistService";
 

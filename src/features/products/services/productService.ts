@@ -42,7 +42,7 @@ export interface ProductListQueryParams extends PageQueryParams {
 	categoryId?: string;
 	minPrice?: number;
 	maxPrice?: number;
-	sort?: string;
+	sort?: string | string[];
 }
 
 export interface PaginatedProductsResult {
@@ -227,12 +227,21 @@ function extractPaginatedProducts(response: unknown): PaginatedProductsResult {
 	return { items, totalElements, totalPages, page, size };
 }
 
-function buildQueryString(params: Record<string, string | number | undefined>) {
+function buildQueryString(params: Record<string, string | number | Array<string | number> | undefined>) {
 	const query = new URLSearchParams();
 
 	Object.entries(params).forEach(([key, value]) => {
 		if (value === undefined || value === null || value === "") return;
-		query.set(key, String(value));
+
+		if (Array.isArray(value)) {
+			value.forEach((entry) => {
+				if (entry === undefined || entry === null || entry === "") return;
+				query.append(key, String(entry));
+			});
+			return;
+		}
+
+		query.append(key, String(value));
 	});
 
 	return query.toString();
@@ -243,33 +252,41 @@ function toApiPage(page?: number) {
 }
 
 function buildPagedProductsUrl(params: ProductListQueryParams = {}) {
-	const queryString = buildQueryString({
-		page: toApiPage(params.page),
-		size: params.size,
-		categoryId: params.categoryId,
-		minPrice: params.minPrice,
-		maxPrice: params.maxPrice,
-		sort: params.sort,
-	});
+	const hasSearchStyleFilters = Boolean(
+		(params.query && params.query.trim()) ||
+		params.minPrice !== undefined ||
+		params.maxPrice !== undefined ||
+		params.sort,
+	);
 
-	if (params.query && params.query.trim()) {
-		const searchParams = new URLSearchParams();
-		searchParams.set("q", params.query.trim());
-		if (queryString) {
-			queryString.split("&").forEach((entry) => {
-				const [key, value] = entry.split("=");
-				if (key && value) {
-					searchParams.set(key, decodeURIComponent(value));
-				}
-			});
-		}
+	if (hasSearchStyleFilters) {
+		const searchQueryString = buildQueryString({
+			page: toApiPage(params.page),
+			size: params.size,
+			q: params.query?.trim() || undefined,
+			categoryId: params.categoryId,
+			minPrice: params.minPrice,
+			maxPrice: params.maxPrice,
+			sort: params.sort,
+		});
 
-		return `${API_ENDPOINTS.PRODUCTS.SEARCH_ROOT}?${searchParams.toString()}`;
+		return `${API_ENDPOINTS.PRODUCTS.SEARCH_ROOT}${searchQueryString ? `?${searchQueryString}` : ""}`;
 	}
 
 	if (params.categoryId) {
-		return `${API_ENDPOINTS.PRODUCTS.CATEGORY(params.categoryId)}${queryString ? `?${queryString}` : ""}`;
+		const categoryQueryString = buildQueryString({
+			page: toApiPage(params.page),
+			size: params.size,
+		});
+
+		return `${API_ENDPOINTS.PRODUCTS.CATEGORY(params.categoryId)}${categoryQueryString ? `?${categoryQueryString}` : ""}`;
 	}
+
+	const queryString = buildQueryString({
+		page: toApiPage(params.page),
+		size: params.size,
+		sort: params.sort,
+	});
 
 	return `${API_ENDPOINTS.PRODUCTS.ROOT}${queryString ? `?${queryString}` : ""}`;
 }

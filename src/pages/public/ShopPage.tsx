@@ -29,7 +29,39 @@ import type { Product } from "@/core/config/productsData";
 
 
 type PriceFilter = "all" | "under-25" | "25-40" | "over-40";
-type SortOption = "name-asc" | "price-asc" | "price-desc";
+type SortOption = "newest" | "oldest" | "name-asc" | "name-desc" | "price-asc" | "price-desc";
+
+const getSortedProducts = (items: Product[], sortBy: SortOption) => {
+	const next = [...items];
+
+	if (sortBy === "newest") {
+		return next.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+	}
+
+	if (sortBy === "oldest") {
+		return next.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+	}
+
+	if (sortBy === "name-desc") {
+		return next.sort((a, b) => b.name.localeCompare(a.name));
+	}
+
+	if (sortBy === "price-asc") {
+		return next.sort(
+			(a, b) =>
+				parseFloat((a.price || "").replace(/[^0-9.]/g, "")) - parseFloat((b.price || "").replace(/[^0-9.]/g, "")),
+		);
+	}
+
+	if (sortBy === "price-desc") {
+		return next.sort(
+			(a, b) =>
+				parseFloat((b.price || "").replace(/[^0-9.]/g, "")) - parseFloat((a.price || "").replace(/[^0-9.]/g, "")),
+		);
+	}
+
+	return next.sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export const ShopPage = () => {
 	const navigate = useNavigate();
@@ -50,8 +82,6 @@ export const ShopPage = () => {
 
 	const [products, setProducts] = useState<Product[]>([]);
 	const [loadingProducts, setLoadingProducts] = useState(false);
-	const [totalProducts, setTotalProducts] = useState(0);
-	const [backendTotalPages, setBackendTotalPages] = useState(1);
 	const [dbCategories, setDbCategories] = useState<BackendCategory[]>([]);
 	const searchParams = useMemo(
 		() => new URLSearchParams(location.search),
@@ -97,12 +127,6 @@ export const ShopPage = () => {
 		setSelectedCategory(matchedCategory?.id || "all");
 	}, [dbCategories, searchParams]);
 
-	const backendSort = useMemo(() => {
-		if (sortBy === "price-asc") return "price,asc";
-		if (sortBy === "price-desc") return "price,desc";
-		return "name,asc";
-	}, [sortBy]);
-
 	const priceRange = useMemo(() => {
 		if (priceFilter === "under-25") return { minPrice: undefined, maxPrice: 25 };
 		if (priceFilter === "25-40") return { minPrice: 25, maxPrice: 40 };
@@ -119,27 +143,22 @@ export const ShopPage = () => {
 		setLoadingProducts(true);
 		try {
 			const result = await productService.getProductsPage({
-				page: currentPage,
-				size: ITEMS_PER_PAGE,
+				page: 1,
+				size: 1000,
 				query: searchQuery.trim() || undefined,
 				categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
 				minPrice: priceRange.minPrice,
 				maxPrice: priceRange.maxPrice,
-				sort: backendSort,
 			});
 
 			setProducts(result.items);
-			setTotalProducts(result.totalElements);
-			setBackendTotalPages(Math.max(1, result.totalPages));
 		} catch (error) {
 			console.error("Failed to load products:", error);
 			setProducts([]);
-			setTotalProducts(0);
-			setBackendTotalPages(1);
 		} finally {
 			setLoadingProducts(false);
 		}
-	}, [backendSort, currentPage, priceRange.maxPrice, priceRange.minPrice, searchQuery, selectedCategory]);
+	}, [priceRange.maxPrice, priceRange.minPrice, searchQuery, selectedCategory]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
@@ -163,14 +182,19 @@ export const ShopPage = () => {
 		return result;
 	}, [products, selectedBadge]);
 
-	const totalPages = Math.max(1, backendTotalPages);
+	const sortedProducts = useMemo(() => getSortedProducts(filteredProducts, sortBy), [filteredProducts, sortBy]);
+	const totalProducts = sortedProducts.length;
+	const totalPages = Math.max(1, Math.ceil(totalProducts / ITEMS_PER_PAGE));
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 	setCurrentPage((page) => Math.min(page, totalPages));
 }, [totalPages]);
 
-	const paginatedProducts = filteredProducts;
+	const paginatedProducts = useMemo(() => {
+		const start = (currentPage - 1) * ITEMS_PER_PAGE;
+		return sortedProducts.slice(start, start + ITEMS_PER_PAGE);
+	}, [ITEMS_PER_PAGE, currentPage, sortedProducts]);
 
 	const countMessage = useMemo(() => {
 	if (totalProducts === 0) return language === "fr" ? "Affichage de 0 formules propres" : "Showing 0 clean formulas";
@@ -364,7 +388,10 @@ export const ShopPage = () => {
 											onChange={(e) => setSortBy(e.target.value as SortOption)}
 											className="h-10 rounded-xl border border-emerald-900/10 bg-white px-3 py-1 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-800 cursor-pointer shadow-xs"
 										>
+											<option value="newest">Newest first</option>
+											<option value="oldest">Oldest first</option>
 											<option value="name-asc">{t("shop.sortName")}</option>
+											<option value="name-desc">Name Z-A</option>
 											<option value="price-asc">{t("shop.sortPriceLow")}</option>
 											<option value="price-desc">{t("shop.sortPriceHigh")}</option>
 										</select>
