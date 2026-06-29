@@ -479,7 +479,7 @@ export const ProfilePage = () => {
 									{language === "fr" ? "CrÃ©ez votre routine bien-Ãªtre et passez votre premiÃ¨re commande." : "Build your daily wellness routine and check out your first order."}
 								</p>
 								<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl">
-									<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les Formules" : "Browse formulas"}</Link>
+									<Link to={APP_ROUTES.SHOP}>{language === "fr" ? "Parcourir les Formules" : "Browse formulas"}</Link>
 								</Button>
 							</div>
 						) : (

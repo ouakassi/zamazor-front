@@ -165,7 +165,7 @@ export const CheckoutPage = () => {
 
 	const handleSuccessReturn = () => {
 		clearCart();
-		navigate(APP_ROUTES.HOME);
+		navigate(APP_ROUTES.SHOP);
 	};
 
 	if (items.length === 0 && !isSuccess) {
@@ -175,7 +175,7 @@ export const CheckoutPage = () => {
 				<h1 className="text-3xl font-playfair text-slate-900">{language === "fr" ? "Votre panier est vide" : "Your checkout is empty"}</h1>
 				<p className="mt-2 text-slate-500">{language === "fr" ? "Il n'y a aucun article dans votre panier." : "There are no items in your cart to checkout."}</p>
 				<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl">
-					<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
+					<Link to={APP_ROUTES.SHOP}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 				</Button>
 			</div>
 		);
@@ -239,7 +239,7 @@ export const CheckoutPage = () => {
 						<ArrowLeft className="size-4" />
 						Cart
 					</Link>
-					<Link to={APP_ROUTES.HOME} className="flex items-center gap-2">
+					<Link to={APP_ROUTES.SHOP} className="flex items-center gap-2">
 						<img src={logo} alt="Zamazor" className="size-9 rounded-lg border border-emerald-900/10 bg-white" />
 						<span className="text-lg font-black tracking-normal text-emerald-950">Zamazor</span>
 					</Link>

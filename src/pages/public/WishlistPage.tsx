@@ -43,7 +43,7 @@ export const WishlistPage = () => {
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-emerald-900/10 pb-6 mb-8">
 					<div>
 						<Link
-							to={APP_ROUTES.HOME}
+							to={APP_ROUTES.SHOP}
 							className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 mb-3"
 						>
 							<ArrowLeft className="size-3.5" />

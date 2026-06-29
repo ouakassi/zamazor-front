@@ -1,4 +1,6 @@
+import { Link } from "react-router";
 import { ArrowRightIcon } from "lucide-react";
+import { APP_ROUTES } from "@/core/routes/paths";
 
 const InstagramIcon = ({ className }: { className?: string }) => (
 	<svg 
@@ -50,19 +52,19 @@ export const Footer = () => {
 							<h3 className="font-playfair text-white text-lg font-medium mb-4">Company</h3>
 							<ul className="space-y-3 text-sm">
 								<li>
-									<a href="/shop" className="hover:text-white transition-colors font-bold text-lime-300">Shop Formulas</a>
+									<Link to={APP_ROUTES.SHOP} className="hover:text-white transition-colors font-bold text-lime-300">Shop Formulas</Link>
 								</li>
 								<li>
-									<a href="#story" className="hover:text-white transition-colors">Our Story</a>
+									<Link to={APP_ROUTES.STORY} className="hover:text-white transition-colors">Our Story</Link>
 								</li>
 								<li>
-									<a href="#contact" className="hover:text-white transition-colors">Contact</a>
+									<Link to={APP_ROUTES.CONTACT} className="hover:text-white transition-colors">Contact</Link>
 								</li>
 								<li>
-									<a href="#faqs" className="hover:text-white transition-colors">FAQs</a>
+									<Link to={APP_ROUTES.FAQ} className="hover:text-white transition-colors">FAQs</Link>
 								</li>
 								<li>
-									<a href="#blog" className="hover:text-white transition-colors">Blog</a>
+									<Link to={APP_ROUTES.BLOG} className="hover:text-white transition-colors">Blog</Link>
 								</li>
 							</ul>
 						</div>
@@ -72,19 +74,19 @@ export const Footer = () => {
 							<h3 className="font-playfair text-white text-lg font-medium mb-4">Get Help</h3>
 							<ul className="space-y-3 text-sm">
 								<li>
-									<a href="#help" className="hover:text-white transition-colors">Help Center</a>
+									<Link to={APP_ROUTES.HELP} className="hover:text-white transition-colors">Help Center</Link>
 								</li>
 								<li>
-									<a href="#chat" className="hover:text-white transition-colors">Live Chat</a>
+									<Link to={APP_ROUTES.CHAT} className="hover:text-white transition-colors">Live Chat</Link>
 								</li>
 								<li>
-									<a href="#returns" className="hover:text-white transition-colors">Return Policy</a>
+									<Link to={APP_ROUTES.RETURNS} className="hover:text-white transition-colors">Return Policy</Link>
 								</li>
 								<li>
-									<a href="#shipping" className="hover:text-white transition-colors">Shipping Info</a>
+									<Link to={APP_ROUTES.SHIPPING} className="hover:text-white transition-colors">Shipping Info</Link>
 								</li>
 								<li>
-									<a href="#bulk" className="hover:text-white transition-colors">Bulk Orders</a>
+									<Link to={APP_ROUTES.BULK} className="hover:text-white transition-colors">Bulk Orders</Link>
 								</li>
 							</ul>
 						</div>
@@ -94,15 +96,15 @@ export const Footer = () => {
 							<h3 className="font-playfair text-white text-lg font-medium mb-4">Information</h3>
 							<div className="space-y-4 text-sm leading-relaxed">
 								<p>
-									3772 Village View Drive, Immokalee, Florida
+									12 Rue des Jasmins, Casablanca, Morocco
 								</p>
 								<p>
-									<a href="mailto:support@zamazor.fit" className="hover:text-white underline decoration-dotted transition-colors">
-										support@zamazor.fit
+									<a href="mailto:support@zamazor.ma" className="hover:text-white underline decoration-dotted transition-colors">
+										support@zamazor.ma
 									</a>
 								</p>
 								<p>
-									+1 888-234-1234 (tool-free)
+									+212 6 11 42 31 16
 								</p>
 							</div>
 						</div>
@@ -120,12 +122,12 @@ export const Footer = () => {
 							Follow Us on Instagram
 						</h3>
 						<a 
-							href="https://instagram.com/zamazor.fit" 
+							href="https://instagram.com/zamazor.ma" 
 							target="_blank" 
 							rel="noreferrer" 
 							className="text-sm font-medium hover:text-white transition-colors flex items-center gap-1"
 						>
-							@zamazor.fit
+							@zamazor.ma
 							<ArrowRightIcon className="h-3.5 w-3.5" />
 						</a>
 					</div>
@@ -213,9 +215,9 @@ export const Footer = () => {
 
 					{/* Legal Links */}
 					<div className="flex flex-wrap items-center gap-6 text-sm font-medium">
-						<a href="#accessibility" className="hover:text-white transition-colors">Accessibility</a>
-						<a href="#terms" className="hover:text-white transition-colors">Terms of Service</a>
-						<a href="#privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+						<Link to={APP_ROUTES.ACCESSIBILITY} className="hover:text-white transition-colors">Accessibility</Link>
+						<Link to={APP_ROUTES.TERMS} className="hover:text-white transition-colors">Terms of Service</Link>
+						<Link to={APP_ROUTES.PRIVACY} className="hover:text-white transition-colors">Privacy Policy</Link>
 					</div>
 
 				</div>
