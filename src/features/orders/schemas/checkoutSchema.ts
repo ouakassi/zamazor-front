@@ -8,9 +8,6 @@ export const checkoutSchema = z.object({
 	city: z.string().min(1, "City is required"),
 	phone: z.string().min(1, "Phone number is required"),
 	country: z.string().min(1, "Country is required"),
-	cardNumber: z.string().min(1, "Card number is required").regex(/^\d{16}$/, "Invalid card number (16 digits)"),
-	cardExpiry: z.string().min(1, "Expiry is required").regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date (MM/YY)"),
-	cardCvv: z.string().min(1, "CVV is required").regex(/^\d{3,4}$/, "CVV must be 3 or 4 digits"),
 });
 
 export type CheckoutFormValues = z.infer<typeof checkoutSchema>;

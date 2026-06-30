@@ -156,6 +156,14 @@ const router = createBrowserRouter([
 						path: APP_ROUTES.CHECKOUT,
 						element: <CheckoutPage />,
 					},
+					{
+						path: APP_ROUTES.CHECKOUT_SUCCESS,
+						element: <CheckoutPage />,
+					},
+					{
+						path: APP_ROUTES.CHECKOUT_CANCEL,
+						element: <CheckoutPage />,
+					},
 				],
 			},
 			{

@@ -7,6 +7,8 @@ export const APP_ROUTES = {
 	SHOP: "/shop",
 	CART: "/cart",
 	CHECKOUT: "/checkout",
+	CHECKOUT_SUCCESS: "/orders/checkout/success",
+	CHECKOUT_CANCEL: "/orders/checkout/cancel",
 	CONTACT: "/contact",
 	FAQ: "/faq",
 	STORY: "/story",
