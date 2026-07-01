@@ -16,7 +16,8 @@ export const API_ENDPOINTS = {
 		SEARCH_ROOT: "/products/search",
 		DETAILS: (id: string) => `/products/${id}`,
 		CATEGORY: (id: string) => `/products/category/${id}`,
-		SEARCH: (query: string) => `/products/search?q=${encodeURIComponent(query)}`,
+		SEARCH: (query: string) =>
+			`/products/search?q=${encodeURIComponent(query)}`,
 	},
 	CATEGORIES: {
 		ROOT: "/categories",
@@ -44,5 +45,8 @@ export const API_ENDPOINTS = {
 		CANCEL: (id: string) => `/orders/${id}/cancel`,
 		STATUS: (id: string) => `/orders/${id}/status`,
 		CHECKOUT: "/orders/checkout",
+	},
+	DASHBOARD: {
+		OVERVIEW: "/dashboard/overview",
 	},
 } as const;
