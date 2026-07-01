@@ -2,7 +2,7 @@ import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { isSystemError, type SystemError } from "@/shared/types";
 import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 
-export interface BackendOrderProduct {
+interface BackendOrderProduct {
 	id: string;
 	name: string;
 	description?: string | null;
@@ -13,7 +13,7 @@ export interface BackendOrderProduct {
 	category: { id: string; label: string };
 }
 
-export interface BackendOrderItem {
+interface BackendOrderItem {
 	id: string;
 	unitPrice?: number;
 	product: BackendOrderProduct;
@@ -34,26 +34,7 @@ export interface BackendOrder {
 	phone?: string;
 }
 
-export interface CheckoutRequest {
-	email: string;
-	firstName: string;
-	lastName: string;
-	address: string;
-	city: string;
-	zipCode: string;
-	items: { productId: string; quantity: number }[];
-	paymentDetails: {
-		cardNumber: string;
-		expiryDate: string;
-		cvv: string;
-	};
-}
-
-export interface ChangeOrderStatusRequest {
-	status: string;
-}
-
-export interface PaymentSessionResponse {
+interface PaymentSessionResponse {
 	paymentUrl?: string;
 	url?: string;
 	checkoutUrl?: string;
@@ -71,7 +52,7 @@ interface PaginatedResponse<T> {
 	size?: number;
 }
 
-export interface OrderPageQueryParams {
+interface OrderPageQueryParams {
 	page?: number;
 	size?: number;
 	status?: string;
@@ -79,7 +60,7 @@ export interface OrderPageQueryParams {
 	sort?: string | string[];
 }
 
-export interface PaginatedOrdersResult {
+interface PaginatedOrdersResult {
 	items: BackendOrder[];
 	totalElements: number;
 	totalPages: number;

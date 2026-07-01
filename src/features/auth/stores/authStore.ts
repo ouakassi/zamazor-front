@@ -18,14 +18,6 @@ export const useAuthStore = create<AuthState>(() => ({
 	status: AuthStatus.Loading,
 }));
 
-export function useAuthenticatedUser() {
-	const auth = useAuthStore();
-	if (auth.status !== AuthStatus.Authenticated) {
-		throw new Error("Must be authenticated");
-	}
-	return auth.user;
-}
-
 export const clearAuth = () => {
 	useAuthStore.setState({ user: null, status: AuthStatus.Unauthenticated });
 	tokenManager.clear();

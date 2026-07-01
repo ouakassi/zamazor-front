@@ -12,10 +12,6 @@ export function parsePrice(value: string | number | null | undefined): number {
 	return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function formatMadPrice(value: string | number | null | undefined): string {
-	return `${parsePrice(value).toFixed(2)} MAD`;
-}
-
 export function formatMadCompact(value: string | number | null | undefined): string {
 	const amount = parsePrice(value);
 

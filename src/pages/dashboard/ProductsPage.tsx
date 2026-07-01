@@ -5,7 +5,7 @@ import CONFIG from "@/core/config/constants";
 import { productService } from "@/features/products/services/productService";
 import type { BackendCategory } from "@/features/products/services/productService";
 import { useProductStore } from "@/features/products/stores/productStore";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";

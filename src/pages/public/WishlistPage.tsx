@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { type MouseEvent } from "react";
 
 import { useLanguage } from "@/shared/context/LanguageContext";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 
 export const WishlistPage = () => {
 	const { language, t } = useLanguage();

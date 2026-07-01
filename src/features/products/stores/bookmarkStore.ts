@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Product } from "../../../core/config/productsData";
+import type { Product } from "@/features/products/types";
 import { tokenManager } from "@/features/auth/globals/tokenManager";
 import { wishlistService } from "@/features/products/services/wishlistService";
 
@@ -18,18 +18,30 @@ export const useBookmarkStore = create<BookmarkStore>()(
 		(set, get) => ({
 			bookmarks: [],
 			addBookmark: async (product) => {
+				if (tokenManager.getAccessToken()) {
+					const success = await wishlistService.addWishlist(product.id);
+					if (success) {
+						await get().syncWishlists();
+					}
+					return;
+				}
+
 				const current = get().bookmarks;
 				if (current.some((p) => p.id === product.id)) {
 					return;
 				}
 
 				set({ bookmarks: [...current, product] });
-				const success = await wishlistService.addWishlist(product.id);
-				if (!success) {
-					set({ bookmarks: current });
-				}
 			},
 			removeBookmark: async (productId) => {
+				if (tokenManager.getAccessToken()) {
+					const success = await wishlistService.removeWishlist(productId);
+					if (success) {
+						await get().syncWishlists();
+					}
+					return;
+				}
+
 				const current = get().bookmarks;
 				if (!current.some((p) => p.id === productId)) {
 					return;
@@ -38,11 +50,6 @@ export const useBookmarkStore = create<BookmarkStore>()(
 				set({
 					bookmarks: current.filter((p) => p.id !== productId),
 				});
-
-				const success = await wishlistService.removeWishlist(productId);
-				if (!success) {
-					set({ bookmarks: current });
-				}
 			},
 			isBookmarked: (productId) => {
 				return get().bookmarks.some((p) => p.id === productId);
@@ -51,6 +58,8 @@ export const useBookmarkStore = create<BookmarkStore>()(
 				const current = get().bookmarks;
 				if (tokenManager.getAccessToken()) {
 					await Promise.allSettled(current.map((product) => wishlistService.removeWishlist(product.id)));
+					await get().syncWishlists();
+					return;
 				}
 				set({ bookmarks: [] });
 			},
@@ -65,6 +74,9 @@ export const useBookmarkStore = create<BookmarkStore>()(
 		}),
 		{
 			name: "zamazor-bookmarks",
+			partialize: (state) => ({
+				bookmarks: tokenManager.getAccessToken() ? [] : state.bookmarks,
+			}),
 		}
 	)
 );

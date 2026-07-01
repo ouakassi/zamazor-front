@@ -16,11 +16,15 @@ export const API_ENDPOINTS = {
 		SEARCH_ROOT: "/products/search",
 		DETAILS: (id: string) => `/products/${id}`,
 		CATEGORY: (id: string) => `/products/category/${id}`,
-		SEARCH: (query: string) => `/products/search?q=${encodeURIComponent(query)}`,
+		SEARCH: (query: string) =>
+			`/products/search?q=${encodeURIComponent(query)}`,
 	},
 	CATEGORIES: {
 		ROOT: "/categories",
 		DETAILS: (id: string) => `/categories/${id}`,
+	},
+	DASHBOARD: {
+		OVERVIEW: "/dashboard/overview",
 	},
 	CARTS: {
 		ROOT: "/carts",
@@ -43,11 +47,3 @@ export const API_ENDPOINTS = {
 		CHECKOUT: "/orders/checkout",
 	},
 } as const;
-
-type ExtractEndpoints<T> = T extends string
-	? T
-	: T extends object
-		? { [K in keyof T]: ExtractEndpoints<T[K]> }[keyof T]
-		: never;
-
-export type AllowedEndpoints = ExtractEndpoints<typeof API_ENDPOINTS>;

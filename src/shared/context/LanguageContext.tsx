@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-export type Language = "en" | "fr";
+type Language = "en" | "fr";
 
-export interface TranslationDictionary {
+interface TranslationDictionary {
 	[key: string]: string | TranslationDictionary;
 }
 

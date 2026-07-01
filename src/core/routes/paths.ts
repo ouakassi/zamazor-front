@@ -1,6 +1,3 @@
-export { API_ENDPOINTS } from "@/core/config/apiEndpoints";
-export type { AllowedEndpoints } from "@/core/config/apiEndpoints";
-
 export const APP_ROUTES = {
 	HOME: "/",
 	PRODUCT: "/product/:id",

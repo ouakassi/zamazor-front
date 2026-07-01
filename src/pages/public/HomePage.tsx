@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 
 import { OriginButton } from "@/shared/components/ui/origin-button";
 import heroProtein from "@/assets/images/hero_protein.png";
@@ -41,6 +41,10 @@ const productProtein = `${CONFIG.API_BASE_URL}/images/product_protein.png`;
 const productGreens = `${CONFIG.API_BASE_URL}/images/product_greens.png`;
 const productHydra = `${CONFIG.API_BASE_URL}/images/product_hydra.png`;
 import { useProductStore } from "@/features/products/stores/productStore";
+import {
+	productService,
+	type BackendCategory,
+} from "@/features/products/services/productService";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { toast } from "sonner";
@@ -264,7 +268,10 @@ export const HomePage = () => {
 
 	const { products: storeProducts, fetchProducts } = useProductStore();
 	const products = storeProducts;
-	const categoryProducts = storeProducts;
+	const [categories, setCategories] = useState<BackendCategory[]>([]);
+	const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+	const [activeCategoryId, setActiveCategoryId] = useState("all");
+	const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
 
 	const routineHighlights = useMemo(() => {
 		const pick = (category: string) => storeProducts.find((product) => product.category === category) || null;
@@ -303,8 +310,25 @@ export const HomePage = () => {
 	}, [language, storeProducts]);
 
 	useEffect(() => {
-		fetchProducts();
+		void fetchProducts();
 	}, [fetchProducts]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const loadCategories = async () => {
+			const backendCategories = await productService.getCategories();
+			if (isMounted) {
+				setCategories(backendCategories);
+			}
+		};
+
+		void loadCategories();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	const [activeSlide, setActiveSlide] = useState(0);
 	const slide = heroSlides[activeSlide];
@@ -334,8 +358,44 @@ export const HomePage = () => {
 	};
 
 	const productSliderRef = useRef<HTMLDivElement>(null);
-	const [activeCategory, setActiveCategory] = useState("All");
 	const categorySliderRef = useRef<HTMLDivElement>(null);
+
+	const categoryTabs = useMemo(
+		() => [
+			{ id: "all", label: language === "fr" ? "Tous" : "All" },
+			...categories.map((category) => ({
+				id: category.id,
+				label: category.label,
+			})),
+		],
+		[categories, language],
+	);
+	const displayedCategoryProducts =
+		activeCategoryId === "all" ? storeProducts : categoryProducts;
+
+	useEffect(() => {
+		let isMounted = true;
+
+		if (activeCategoryId === "all") return;
+
+		const loadCategoryProducts = async () => {
+			setLoadingCategoryProducts(true);
+			const result = await productService.getProductsByCategoryPage(activeCategoryId, {
+				page: 1,
+				size: 12,
+			});
+			if (isMounted) {
+				setCategoryProducts(result.items);
+				setLoadingCategoryProducts(false);
+			}
+		};
+
+		void loadCategoryProducts();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [activeCategoryId]);
 
 	const scrollProductSlider = (direction: "left" | "right") => {
 		const container = productSliderRef.current;
@@ -1056,8 +1116,9 @@ export const HomePage = () => {
 
 					{/* Category Tabs */}
 					<div className="flex overflow-x-auto gap-2.5 pb-4 scrollbar-none snap-x mb-8">
-						{["All", "Protein", "Greens", "Energy", "Recovery", "Immunity", "Wellness"].map((cat) => {
-							const isActive = activeCategory === cat;
+						{categoryTabs.map((category) => {
+							const cat = category.label;
+							const isActive = activeCategoryId === category.id;
 							const catLabel = cat === "All"
 								? (language === "fr" ? "Tous" : "All")
 								: cat === "Protein" ? (language === "fr" ? "ProtÃƒÂ©ine" : "Protein")
@@ -1069,8 +1130,8 @@ export const HomePage = () => {
 								: cat;
 							return (
 								<button
-									key={cat}
-									onClick={() => setActiveCategory(cat)}
+									key={category.id}
+									onClick={() => setActiveCategoryId(category.id)}
 									className={cn(
 										"px-5 py-2 text-xs font-bold rounded-full border transition-all duration-200 cursor-pointer snap-start shrink-0 shadow-sm",
 										isActive
@@ -1090,11 +1151,44 @@ export const HomePage = () => {
 						className="flex overflow-x-auto gap-6 pb-6 scroll-smooth snap-x snap-mandatory scrollbar-none min-h-[460px]"
 					>
 						<AnimatePresence mode="popLayout">
-							{categoryProducts
-								.filter((p) => activeCategory === "All" || p.category === activeCategory)
-								.map((product) => (
+							{activeCategoryId !== "all" && loadingCategoryProducts ? (
+								<motion.div
+									key="category-loading"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									className="flex min-h-[420px] w-full items-center justify-center"
+								>
+									<div className="flex flex-col items-center gap-3 rounded-3xl border border-emerald-900/5 bg-white px-8 py-10 shadow-sm">
+										<div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-950" />
+										<p className="text-xs font-semibold text-slate-500">
+											{language === "fr" ? "Chargement des produits..." : "Loading products..."}
+										</p>
+									</div>
+								</motion.div>
+							) : displayedCategoryProducts.length === 0 ? (
+								<motion.div
+									key="category-empty"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									className="flex min-h-[420px] w-full items-center justify-center"
+								>
+									<div className="max-w-md rounded-3xl border border-dashed border-emerald-900/15 bg-white px-8 py-10 text-center shadow-sm">
+										<h3 className="text-lg font-playfair font-semibold text-slate-950">
+											{language === "fr" ? "Aucun produit dans cette categorie" : "No products in this category"}
+										</h3>
+										<p className="mt-2 text-sm leading-6 text-slate-500">
+											{language === "fr"
+												? "Les produits apparaitront ici des que le backend les associera a cette categorie."
+												: "Products will appear here as soon as the backend assigns items to this category."}
+										</p>
+									</div>
+								</motion.div>
+							) : (
+								displayedCategoryProducts.map((product) => (
 								<motion.article
-										key={product.name}
+										key={product.id}
 										variants={cardLift}
 										layout
 										initial={{ opacity: 0, scale: 0.95 }}
@@ -1108,10 +1202,10 @@ export const HomePage = () => {
 										<div>
 											<div className="relative h-80 overflow-hidden rounded-[1.5rem] bg-white border border-gray-100/60">
 												<span className="absolute left-3 top-3 z-10 rounded-full bg-white/80 backdrop-blur-md px-3.5 py-1 text-xs font-semibold text-emerald-900 border border-white/20 shadow-sm">
-													{product.badge}
+													{product.badge || product.category}
 												</span>
 												<img
-													src={product.image}
+													src={product.image || productProtein}
 													alt={product.name}
 													className="h-full w-full object-cover transition-transform duration-220 ease-out group-hover:scale-108"
 												/>
@@ -1127,7 +1221,9 @@ export const HomePage = () => {
 													</h3>
 													<p className="text-base font-bold text-slate-900 shrink-0">{product.price}</p>
 												</div>
-												<p className="mt-1.5 text-sm text-slate-500 font-sans">{product.flavor}</p>
+												{product.flavor ? (
+													<p className="mt-1.5 text-sm text-slate-500 font-sans">{product.flavor}</p>
+												) : null}
 											</div>
 										</div>
 
@@ -1144,7 +1240,7 @@ export const HomePage = () => {
 											{t("common.addToCart")}
 										</OriginButton>
 									</motion.article>
-								))}
+								)))}
 						</AnimatePresence>
 					</div>
 				</div>

@@ -3,7 +3,7 @@ import { tokenManager } from "@/features/auth/globals/tokenManager";
 import { isSystemError } from "@/shared/types";
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { productService, type BackendProduct } from "@/features/products/services/productService";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 
 type WishlistResponse = unknown;
 
