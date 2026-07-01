@@ -9,7 +9,7 @@ import {
   Home
 } from 'lucide-react';
 
-export type NavItemData = {
+type NavItemData = {
   id: string;
   title: string;
   icon: React.ElementType;
@@ -18,7 +18,7 @@ export type NavItemData = {
   children?: NavItemData[];
 };
 
-export type NavGroupData = {
+type NavGroupData = {
   heading?: string;
   items: NavItemData[];
 };

@@ -4,12 +4,9 @@ import { motion } from "framer-motion";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
 import { APP_ROUTES } from "@/core/routes/paths";
-import { orderService, type BackendOrder } from "@/features/orders/services/orderService";
 import { getOrderStatusMeta } from "@/features/orders/constants/orderStatus";
 import { formatMadCompact } from "@/shared/utils/price";
-import type { Product } from "@/core/config/productsData";
 import { Button } from "@/shared/components/ui/button";
-import { useProductStore } from "@/features/products/stores/productStore";
 import {
 	AlertTriangle,
 	ArrowRight,
@@ -20,6 +17,7 @@ import {
 	ShoppingCart,
 	TrendingUp,
 } from "lucide-react";
+import { dashboardService, type DashboardOverviewResponse } from "@/features/dashboard/services/dashboardService";
 
 const cardMotion = {
 	initial: { opacity: 0, y: 18 },
@@ -27,144 +25,250 @@ const cardMotion = {
 	transition: { duration: 0.45 },
 };
 
+type OverviewRecentOrder = {
+	id: string;
+	status: string;
+	total: number;
+	createdAt: string;
+	shippingAddress: string;
+};
+
+type OverviewTopProduct = {
+	id: string;
+	name: string;
+	category: string;
+	quantity: number;
+	revenue: number;
+};
+
+type OverviewCategorySummary = {
+	category: string;
+	count: number;
+};
+
+type OverviewLowStock = {
+	id: string;
+	name: string;
+	category: string;
+	stock: number;
+};
+
+type OverviewModel = {
+	totalSales: number;
+	averageOrderValue: number;
+	totalOrders: number;
+	pendingOrders: number;
+	paidOrders: number;
+	confirmedOrders: number;
+	processingOrders: number;
+	shippedOrders: number;
+	deliveredOrders: number;
+	canceledOrders: number;
+	refundedOrders: number;
+	inFlightOrders: number;
+	recentOrders: OverviewRecentOrder[];
+	topProducts: OverviewTopProduct[];
+	categorySummary: OverviewCategorySummary[];
+	lowStockProducts: OverviewLowStock[];
+};
+
 const formatMoney = (value: number) => formatMadCompact(value);
 
-const getCategoryLabel = (category: unknown) => {
-	if (category && typeof category === "object" && "label" in category && typeof category.label === "string") {
-		return category.label;
+type OrderAddressSource = {
+	shippingCountry?: string;
+	shippingCity?: string;
+	shippingStreet?: string;
+	phone?: string;
+	shippingAddress?: string;
+};
+
+const getOrderShippingAddress = (order: OrderAddressSource) => {
+	const parts = [order.shippingCountry, order.shippingCity, order.shippingStreet].filter(
+		(part): part is string => typeof part === "string" && part.trim().length > 0,
+	);
+
+	const address = parts.join(", ");
+	const phone = typeof order.phone === "string" && order.phone.trim() ? `Phone: ${order.phone}` : "";
+
+	if (address && phone) {
+		return `${address} - ${phone}`;
 	}
 
-	if (typeof category === "string" && category.trim()) {
-		return category;
-	}
+	return address || phone || order.shippingAddress || "No shipping address provided.";
+};
 
-	return "Uncategorized";
+const toNumber = (value: unknown, fallback = 0) => (typeof value === "number" && Number.isFinite(value) ? value : fallback);
+
+const normalizeOverview = (overview: DashboardOverviewResponse): OverviewModel => {
+	const metrics = overview.metrics ?? {};
+
+	const recentOrders = (overview.recentOrders ?? []).flatMap((order) => {
+		if (!order || typeof order !== "object") return [];
+
+		const id = typeof order.id === "string" ? order.id : "";
+		if (!id) return [];
+
+		return [
+			{
+				id,
+				status: typeof order.status === "string" ? order.status : "PENDING",
+				total: toNumber(order.total),
+				createdAt: typeof order.createdAt === "string" ? order.createdAt : new Date().toISOString(),
+				shippingAddress:
+					typeof order.shippingAddress === "string" && order.shippingAddress.trim().length > 0
+						? order.shippingAddress
+						: getOrderShippingAddress(order),
+			},
+		];
+	});
+
+	const topProductsSource = overview.topSellingItems ?? overview.topProducts ?? [];
+	const topProducts = topProductsSource.flatMap((item) => {
+		if (!item || typeof item !== "object") return [];
+
+		const id = typeof item.id === "string" ? item.id : typeof item.productId === "string" ? item.productId : "";
+		if (!id) return [];
+
+		return [
+			{
+				id,
+				name: typeof item.name === "string" && item.name.trim().length > 0 ? item.name : "Unknown product",
+				category:
+					typeof item.category === "string" && item.category.trim().length > 0 ? item.category : "Uncategorized",
+				quantity: toNumber(item.quantitySold ?? item.quantity),
+				revenue: toNumber(item.revenue),
+			},
+		];
+	});
+
+	const categorySource = overview.categorySummaries ?? overview.categorySummary ?? [];
+	const categorySummary = categorySource.flatMap((entry) => {
+		if (!entry || typeof entry !== "object") return [];
+
+		const category =
+			typeof entry.category === "string" && entry.category.trim().length > 0
+				? entry.category
+				: typeof entry.label === "string" && entry.label.trim().length > 0
+					? entry.label
+					: "Uncategorized";
+
+		return [
+			{
+				category,
+				count: toNumber(entry.count ?? entry.total),
+			},
+		];
+	});
+
+	const lowStockSource = overview.lowStockWarnings ?? overview.lowStockProducts ?? [];
+	const lowStockProducts = lowStockSource.flatMap((item) => {
+		if (!item || typeof item !== "object") return [];
+
+		const id = typeof item.id === "string" ? item.id : "";
+		if (!id) return [];
+
+		return [
+			{
+				id,
+				name: typeof item.name === "string" && item.name.trim().length > 0 ? item.name : "Unknown product",
+				category:
+					typeof item.category === "string" && item.category.trim().length > 0 ? item.category : "Uncategorized",
+				stock: toNumber(item.stock ?? item.quantity),
+			},
+		];
+	});
+
+	const totalSales = toNumber(overview.totalSales ?? metrics.totalSales);
+	const averageOrderValue = toNumber(overview.averageOrderValue ?? metrics.averageOrderValue);
+	const totalOrders = toNumber(overview.totalOrders ?? metrics.totalOrders ?? recentOrders.length);
+	const pendingOrders = toNumber(overview.pendingOrders ?? metrics.pendingOrders);
+	const paidOrders = toNumber(overview.paidOrders ?? metrics.paidOrders);
+	const confirmedOrders = toNumber(overview.confirmedOrders ?? metrics.confirmedOrders);
+	const processingOrders = toNumber(overview.processingOrders ?? metrics.processingOrders);
+	const shippedOrders = toNumber(overview.shippedOrders ?? metrics.shippedOrders);
+	const deliveredOrders = toNumber(overview.deliveredOrders ?? metrics.deliveredOrders);
+	const canceledOrders = toNumber(overview.canceledOrders ?? metrics.canceledOrders);
+	const refundedOrders = toNumber(overview.refundedOrders ?? metrics.refundedOrders);
+	const inFlightOrders = pendingOrders + paidOrders + confirmedOrders + processingOrders + shippedOrders;
+
+	return {
+		totalSales,
+		averageOrderValue,
+		totalOrders,
+		pendingOrders,
+		paidOrders,
+		confirmedOrders,
+		processingOrders,
+		shippedOrders,
+		deliveredOrders,
+		canceledOrders,
+		refundedOrders,
+		inFlightOrders,
+		recentOrders,
+		topProducts,
+		categorySummary,
+		lowStockProducts,
+	};
 };
 
 export const OverviewPage = () => {
 	useDocumentTitle(`Dashboard Overview | ${CONFIG.APP_NAME}`);
-	const fetchStoreProducts = useProductStore((state) => state.fetchProducts);
 
-	const [products, setProducts] = useState<Product[]>([]);
-	const [orders, setOrders] = useState<BackendOrder[]>([]);
+	const [overview, setOverview] = useState<OverviewModel | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
 
 	useEffect(() => {
-		const loadData = async () => {
-			try {
-				const [prodsData, ordersData] = await Promise.all([
-					fetchStoreProducts(true),
-					orderService.getAllOrders(),
-				]);
+		let isMounted = true;
 
-				setProducts(prodsData);
-				setOrders(ordersData);
-			} catch (error) {
-				console.error("Failed to load dashboard overview data:", error);
-			} finally {
+		const loadData = async () => {
+			setLoading(true);
+			setLoadError(false);
+
+			const apiOverview = await dashboardService.getOverview();
+			if (!isMounted) return;
+
+			if (apiOverview) {
+				setOverview(normalizeOverview(apiOverview));
 				setLoading(false);
+				return;
 			}
+
+			setOverview(null);
+			setLoadError(true);
+			setLoading(false);
 		};
 
-		loadData();
-	}, [fetchStoreProducts]);
+		void loadData();
 
-	const settledOrders = useMemo(
-		() => orders.filter((order) => ["PAID", "COMPLETED", "DELIVERED"].includes(order.status)),
-		[orders],
-	);
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
-	const totalSales = useMemo(
-		() => settledOrders.reduce((sum, order) => sum + order.total, 0),
-		[settledOrders],
-	);
+	const recentSales = useMemo(() => {
+		if (!overview) return [];
+		return [...overview.recentOrders].reverse();
+	}, [overview]);
 
-	const averageOrderValue = settledOrders.length > 0 ? totalSales / settledOrders.length : 0;
-
-	const statusCounts = useMemo(
-		() =>
-			orders.reduce<Record<string, number>>((acc, order) => {
-				acc[order.status] = (acc[order.status] || 0) + 1;
-				return acc;
-			}, {}),
-		[orders],
-	);
-
-	const pendingOrders = statusCounts.PENDING || 0;
-	const completedOrders = (statusCounts.COMPLETED || 0) + (statusCounts.PAID || 0) + (statusCounts.DELIVERED || 0);
-	const canceledOrders = statusCounts.CANCELED || 0;
-	const inFlightOrders = pendingOrders + completedOrders;
-
-	const recentOrders = useMemo(
-		() =>
-			[...orders]
-				.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-				.slice(0, 6),
-		[orders],
-	);
-
-	const recentSales = useMemo(() => [...recentOrders].reverse(), [recentOrders]);
 	const maxAmount = recentSales.length > 0 ? Math.max(...recentSales.map((order) => order.total)) : 1;
 
-	const lowStockProducts = useMemo(
-		() =>
-			products
-				.filter((product) => typeof product.stock === "number" && product.stock <= 10)
-				.sort((a, b) => (a.stock || 0) - (b.stock || 0)),
-		[products],
-	);
-
-	const categorySummary = useMemo(() => {
-		const aggregate = new Map<string, number>();
-
-		for (const product of products) {
-			const categoryName = product.category || "Uncategorized";
-			aggregate.set(categoryName, (aggregate.get(categoryName) || 0) + 1);
+	if (loading || !overview) {
+		if (loadError) {
+			return (
+				<div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center">
+					<AlertTriangle className="size-8 text-amber-600" />
+					<h2 className="text-base font-semibold text-slate-950">Dashboard overview unavailable</h2>
+					<p className="max-w-md text-sm text-slate-500">
+						The dashboard metrics must come from the backend overview endpoint. Try refreshing once the API is available.
+					</p>
+					<Button onClick={() => window.location.reload()} className="mt-2 h-10 rounded-xl bg-emerald-900 px-4 text-xs font-semibold text-white hover:bg-emerald-950">
+						Refresh
+					</Button>
+				</div>
+			);
 		}
 
-		return [...aggregate.entries()]
-			.map(([category, count]) => ({ category, count }))
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 5);
-	}, [products]);
-
-	const topProducts = useMemo(() => {
-		const aggregate = new Map<
-			string,
-			{ id: string; name: string; quantity: number; revenue: number; category: string }
-		>();
-
-		for (const order of orders) {
-			for (const item of order.items) {
-				const productId = item.product?.id;
-				if (!productId) continue;
-
-				const quantity = item.quantity || 0;
-				const revenue = (item.unitPrice || item.product?.price || 0) * quantity;
-				const current = aggregate.get(productId);
-				const category = getCategoryLabel(item.product?.category);
-
-				if (current) {
-					current.quantity += quantity;
-					current.revenue += revenue;
-				} else {
-					aggregate.set(productId, {
-						id: productId,
-						name: item.product?.name || "Unknown product",
-						quantity,
-						revenue,
-						category,
-					});
-				}
-			}
-		}
-
-		return [...aggregate.values()]
-			.sort((a, b) => b.quantity - a.quantity)
-			.slice(0, 5);
-	}, [orders]);
-
-	if (loading) {
 		return (
 			<div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
 				<div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-950" />
@@ -173,11 +277,32 @@ export const OverviewPage = () => {
 		);
 	}
 
+	const {
+		totalSales,
+		averageOrderValue,
+		totalOrders,
+		pendingOrders,
+		paidOrders,
+		confirmedOrders,
+		processingOrders,
+		shippedOrders,
+		deliveredOrders,
+		canceledOrders,
+		refundedOrders,
+		inFlightOrders,
+		recentOrders,
+		topProducts,
+		categorySummary,
+		lowStockProducts,
+	} = overview;
+
+	const categoryTotal = categorySummary.reduce((sum, entry) => sum + entry.count, 0);
+
 	return (
 		<div className="space-y-6">
 			<motion.section
 				{...cardMotion}
-				className="overflow-hidden rounded-[28px] border border-emerald-900/5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-lime-900 p-6 sm:p-7 text-white shadow-[0_20px_60px_-24px_rgba(5,46,22,0.55)]"
+				className="overflow-hidden rounded-[28px] border border-emerald-900/5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-lime-900 p-6 text-white shadow-[0_20px_60px_-24px_rgba(5,46,22,0.55)] sm:p-7"
 			>
 				<div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
 					<div className="space-y-4">
@@ -211,7 +336,7 @@ export const OverviewPage = () => {
 							<div className="mt-3 flex items-end justify-between">
 								<div>
 									<p className="text-3xl font-semibold">{inFlightOrders}</p>
-									<p className="mt-1 text-xs text-emerald-50/70">Pending + completed</p>
+									<p className="mt-1 text-xs text-emerald-50/70">Pending through shipped</p>
 								</div>
 								<ShoppingCart className="size-8 text-emerald-200" />
 							</div>
@@ -263,7 +388,7 @@ export const OverviewPage = () => {
 					},
 					{
 						label: "Total Orders",
-						value: String(orders.length),
+						value: String(totalOrders),
 						icon: ClipboardList,
 						accent: "bg-teal-50 text-teal-800",
 					},
@@ -346,8 +471,9 @@ export const OverviewPage = () => {
 							<div className="grid gap-2 sm:grid-cols-3">
 								{[
 									{ label: "Pending", value: pendingOrders },
-									{ label: "Completed", value: completedOrders },
-									{ label: "Canceled", value: canceledOrders },
+									{ label: "Paid", value: paidOrders },
+									{ label: "Completed", value: confirmedOrders + processingOrders + shippedOrders + deliveredOrders },
+									{ label: "Canceled", value: canceledOrders + refundedOrders },
 								].map((item) => (
 									<div key={item.label} className="rounded-2xl bg-slate-50 p-3">
 										<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{item.label}</p>
@@ -363,7 +489,7 @@ export const OverviewPage = () => {
 					<motion.section {...cardMotion} className="rounded-3xl border border-emerald-900/5 bg-white p-6 shadow-md">
 						<div className="mb-4 flex items-center justify-between">
 							<h3 className="text-base font-semibold text-slate-950">Category Mix</h3>
-							<span className="text-xs text-slate-400">{products.length} products</span>
+							<span className="text-xs text-slate-400">{categoryTotal} products</span>
 						</div>
 
 						{categorySummary.length === 0 ? (
@@ -373,7 +499,7 @@ export const OverviewPage = () => {
 						) : (
 							<div className="space-y-3">
 								{categorySummary.map((entry) => {
-									const width = Math.max(18, (entry.count / products.length) * 100);
+									const width = Math.max(18, (entry.count / Math.max(1, categorySummary[0]?.count ?? 1)) * 100);
 
 									return (
 										<div key={entry.category} className="space-y-1.5">
@@ -410,10 +536,10 @@ export const OverviewPage = () => {
 										</div>
 										<span
 											className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-												(product.stock || 0) === 0 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
+												product.stock === 0 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
 											}`}
 										>
-											{product.stock || 0} left
+											{product.stock} left
 										</span>
 									</div>
 								))}
@@ -465,7 +591,7 @@ export const OverviewPage = () => {
 							<h3 className="text-base font-semibold text-slate-950">Recent Orders</h3>
 							<p className="mt-1 text-xs text-slate-500">Latest activity across the store.</p>
 						</div>
-						<p className="text-xs text-slate-500">{orders.length} total orders</p>
+						<p className="text-xs text-slate-500">{totalOrders} total orders</p>
 					</div>
 
 					{recentOrders.length === 0 ? (
@@ -479,11 +605,11 @@ export const OverviewPage = () => {
 									<div className="flex items-start justify-between gap-3">
 										<div>
 											<p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Order</p>
-											<p className="font-mono text-sm font-bold text-slate-950">
-												{order.id.slice(0, 8).toUpperCase()}
-											</p>
+											<p className="font-mono text-sm font-bold text-slate-950">{order.id.slice(0, 8).toUpperCase()}</p>
 										</div>
-										<span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getOrderStatusMeta(order.status).badgeClass}`}>
+										<span
+											className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getOrderStatusMeta(order.status).badgeClass}`}
+										>
 											{getOrderStatusMeta(order.status).label}
 										</span>
 									</div>
@@ -491,7 +617,7 @@ export const OverviewPage = () => {
 										<span>{new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
 										<span className="font-semibold text-slate-950">{formatMoney(order.total)}</span>
 									</div>
-									<p className="mt-3 line-clamp-2 text-xs text-slate-500">{order.shippingAddress || "No shipping address provided."}</p>
+									<p className="mt-3 line-clamp-2 text-xs text-slate-500">{order.shippingAddress}</p>
 								</div>
 							))}
 						</div>

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Product } from "@/core/config/productsData";
+import { type Product } from "@/features/products/types";
 import { productService } from "../services/productService";
 
 interface ProductStore {

@@ -1,10 +1,10 @@
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { isSystemError } from "@/shared/types";
-import { type Product } from "@/core/config/productsData";
+import { type Product } from "@/features/products/types";
 import { productService } from "@/features/products/services/productService";
 import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 
-export interface BackendCartItem {
+interface BackendCartItem {
 	id: string; // cart item ID
 	product: {
 		id: string;
@@ -15,7 +15,7 @@ export interface BackendCartItem {
 	quantity: number;
 }
 
-export interface BackendCart {
+interface BackendCart {
 	id: string;
 	items: BackendCartItem[];
 }
@@ -40,11 +40,10 @@ export const cartService = {
 			);
 
 			if (isSystemError(response)) {
-				if (!isMissingCartError(response)) {
-					console.warn(
-						"Cart API returned system error, using client-side cart fallback.",
-					);
+				if (isMissingCartError(response)) {
+					return [];
 				}
+				console.warn("Cart API returned system error.");
 				return null;
 			}
 
@@ -58,9 +57,6 @@ export const cartService = {
 								name: item.product.name,
 								category: "Supplement",
 								price: `${item.product.price.toFixed(2)} MAD`,
-								flavor: "Pure & clean",
-								badge: "Stack",
-								theme: "emerald",
 								image: item.product.imageUrl || "",
 							},
 							quantity: item.quantity,
@@ -71,7 +67,7 @@ export const cartService = {
 			}
 			return null;
 		} catch (error) {
-			console.warn("Failed to fetch cart from API, falling back to local state:", error);
+			console.warn("Failed to fetch cart from API:", error);
 			return null;
 		}
 	},
@@ -88,13 +84,13 @@ export const cartService = {
 			);
 
 			if (isSystemError(response)) {
-				console.warn("Failed to add to API cart, operating in local-only mode.");
+				console.warn("Failed to add item to API cart.");
 				return false;
 			}
 
 			return true;
 		} catch (error) {
-			console.warn("Add to cart API call failed, falling back to local storage:", error);
+			console.warn("Add to cart API call failed:", error);
 			return false;
 		}
 	},
@@ -129,22 +125,40 @@ export const cartService = {
 			);
 
 			if (isSystemError(response)) {
-				console.warn("Failed to remove item from API cart, operating in local-only mode.");
+				console.warn("Failed to remove item from API cart.");
 				return false;
 			}
 
 			return true;
 		} catch (error) {
-			console.warn("Remove from cart API call failed, falling back to local storage:", error);
+			console.warn("Remove from cart API call failed:", error);
 			return false;
 		}
 	},
 
 	updateCartItemQuantity: async (productId: string, quantity: number): Promise<boolean> => {
 		try {
+			const cart = await privateApiRequest<BackendCart>(
+				{
+					url: API_ENDPOINTS.CARTS.ROOT,
+					method: "GET",
+				},
+				{ ignoreErrors: true },
+			);
+
+			if (isSystemError(cart) || !cart || !cart.items) {
+				return false;
+			}
+
+			const item = cart.items.find((i) => i.product && i.product.id === productId);
+			if (!item) {
+				console.warn(`Product ${productId} not found in backend cart during quantity update.`);
+				return false;
+			}
+
 			const response = await privateApiRequest<unknown>(
 				{
-					url: API_ENDPOINTS.CARTS.ITEM_DETAILS(productId),
+					url: API_ENDPOINTS.CARTS.ITEM_DETAILS(item.id),
 					method: "PATCH",
 					data: { quantity },
 				},
@@ -152,13 +166,13 @@ export const cartService = {
 			);
 
 			if (isSystemError(response)) {
-				console.warn("Failed to update cart item quantity on API, operating in local-only mode.");
+				console.warn("Failed to update cart item quantity on API.");
 				return false;
 			}
 
 			return true;
 		} catch (error) {
-			console.warn("Update cart item quantity API call failed, falling back to local storage:", error);
+			console.warn("Update cart item quantity API call failed:", error);
 			return false;
 		}
 	},
@@ -174,13 +188,13 @@ export const cartService = {
 			);
 
 			if (isSystemError(response)) {
-				console.warn("Failed to clear cart on API, operating in local-only mode.");
+				console.warn("Failed to clear cart on API.");
 				return false;
 			}
 
 			return true;
 		} catch (error) {
-			console.warn("Clear cart API call failed, falling back to local storage:", error);
+			console.warn("Clear cart API call failed:", error);
 			return false;
 		}
 	},

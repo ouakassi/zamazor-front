@@ -12,7 +12,7 @@ import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { AuthStatus } from "@/features/auth/types";
 import { productService } from "@/features/products/services/productService";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 import {
 	MenuIcon,
 	X as XIcon,

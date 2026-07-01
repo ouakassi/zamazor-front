@@ -9,9 +9,9 @@ export const ORDER_STATUSES = [
 	"REFUNDED",
 ] as const;
 
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
+type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export const ORDER_STATUS_META: Record<
+const ORDER_STATUS_META: Record<
 	OrderStatus,
 	{
 		label: string;
@@ -66,7 +66,7 @@ export const ORDER_STATUS_OPTIONS = ORDER_STATUSES.map((status) => ({
 	label: ORDER_STATUS_META[status].label,
 }));
 
-export const FINAL_ORDER_STATUSES = ["DELIVERED", "CANCELED", "REFUNDED"] as const;
+const FINAL_ORDER_STATUSES = ["DELIVERED", "CANCELED", "REFUNDED"] as const;
 
 export function isFinalOrderStatus(status: string) {
 	return FINAL_ORDER_STATUSES.includes(status as (typeof FINAL_ORDER_STATUSES)[number]);

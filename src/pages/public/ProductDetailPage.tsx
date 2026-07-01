@@ -21,7 +21,7 @@ import { useProductStore } from "@/features/products/stores/productStore";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { toast } from "sonner";
-import { type Product } from "@/core/config/productsData";
+import { type Product } from "@/features/products/types";
 import { useLanguage } from "@/shared/context/LanguageContext";
 
 

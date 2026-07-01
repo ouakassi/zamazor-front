@@ -22,6 +22,9 @@ export const API_ENDPOINTS = {
 		ROOT: "/categories",
 		DETAILS: (id: string) => `/categories/${id}`,
 	},
+	DASHBOARD: {
+		OVERVIEW: "/dashboard/overview",
+	},
 	CARTS: {
 		ROOT: "/carts",
 		ITEMS: "/carts/items",
@@ -43,11 +46,3 @@ export const API_ENDPOINTS = {
 		CHECKOUT: "/orders/checkout",
 	},
 } as const;
-
-type ExtractEndpoints<T> = T extends string
-	? T
-	: T extends object
-		? { [K in keyof T]: ExtractEndpoints<T[K]> }[keyof T]
-		: never;
-
-export type AllowedEndpoints = ExtractEndpoints<typeof API_ENDPOINTS>;

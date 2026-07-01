@@ -21,7 +21,7 @@ if (!parsed.success) {
 	);
 }
 
-export const CONFIG = {
+const CONFIG = {
 	API_BASE_URL: parsed.data.VITE_API_BASE_URL,
 	TIMEOUT: 5000,
 	APP_NAME: parsed.data.VITE_APP_NAME,
