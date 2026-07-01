@@ -46,7 +46,4 @@ export const API_ENDPOINTS = {
 		STATUS: (id: string) => `/orders/${id}/status`,
 		CHECKOUT: "/orders/checkout",
 	},
-	DASHBOARD: {
-		OVERVIEW: "/dashboard/overview",
-	},
 } as const;
