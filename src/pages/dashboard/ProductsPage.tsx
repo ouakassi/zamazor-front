@@ -19,9 +19,42 @@ const cardMotion = {
 	transition: { duration: 0.35 },
 };
 
+const getSortedProducts = (items: Product[], sortBy: string) => {
+	const next = [...items];
+
+	if (sortBy === "newest") {
+		return next.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+	}
+
+	if (sortBy === "oldest") {
+		return next.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+	}
+
+	if (sortBy === "name-desc") {
+		return next.sort((a, b) => b.name.localeCompare(a.name));
+	}
+
+	if (sortBy === "price-asc") {
+		return next.sort(
+			(a, b) =>
+				parseFloat((a.price || "").replace(/[^0-9.]/g, "")) - parseFloat((b.price || "").replace(/[^0-9.]/g, "")),
+		);
+	}
+
+	if (sortBy === "price-desc") {
+		return next.sort(
+			(a, b) =>
+				parseFloat((b.price || "").replace(/[^0-9.]/g, "")) - parseFloat((a.price || "").replace(/[^0-9.]/g, "")),
+		);
+	}
+
+	return next.sort((a, b) => a.name.localeCompare(b.name));
+};
+
 export const ProductsPage = () => {
 	useDocumentTitle(`Products Management | ${CONFIG.APP_NAME}`);
 	const fetchStoreProducts = useProductStore((state) => state.fetchProducts);
+	const removeStoreProduct = useProductStore((state) => state.removeProductById);
 
 	// Data states
 	const [products, setProducts] = useState<Product[]>([]);
@@ -98,22 +131,22 @@ export const ProductsPage = () => {
 	const loadTableData = useCallback(async () => {
 		try {
 			const result = await productService.getProductsPage({
-				page: productPage,
-				size: productsPerPage,
+				page: 1,
+				size: 1000,
 				query: productSearch.trim() || undefined,
 				categoryId: selectedCategoryFilter !== "all" ? selectedCategoryFilter : undefined,
 			});
 
 			setTableProducts(result.items);
-			setTableTotalElements(result.totalElements);
-			setTableTotalPages(Math.max(1, result.totalPages));
+			setTableTotalElements(result.items.length);
+			setTableTotalPages(Math.max(1, Math.ceil(result.items.length / productsPerPage)));
 		} catch (error) {
 			console.error("Failed to load dashboard products table:", error);
 			setTableProducts([]);
 			setTableTotalElements(0);
 			setTableTotalPages(1);
 		}
-	}, [productPage, productSearch, productsPerPage, selectedCategoryFilter]);
+	}, [productSearch, productsPerPage, selectedCategoryFilter]);
 
 	useEffect(() => {
 		return () => {
@@ -346,20 +379,20 @@ export const ProductsPage = () => {
 			if (result) {
 				setIsProductModalOpen(false);
 				resetProductForm();
-				await loadData();
-				if (!editingProduct) {
-					setHighlightedProductId(result.id);
-					setTableProducts((current) => [result, ...current.filter((product) => product.id !== result.id)].slice(0, productsPerPage));
+				setSortBy("newest");
+				setProductPage(1);
+				setHighlightedProductId(result.id);
+				setTableProducts((current) => [result, ...current.filter((product) => product.id !== result.id)].slice(0, productsPerPage));
 
-					if (highlightTimeoutRef.current !== null) {
-						window.clearTimeout(highlightTimeoutRef.current);
-					}
-
-					highlightTimeoutRef.current = window.setTimeout(() => {
-						setHighlightedProductId(null);
-						void loadTableData();
-					}, 2000);
+				if (highlightTimeoutRef.current !== null) {
+					window.clearTimeout(highlightTimeoutRef.current);
 				}
+
+				highlightTimeoutRef.current = window.setTimeout(() => {
+					setHighlightedProductId(null);
+					void loadTableData();
+				}, 2000);
+				await loadData();
 			} else {
 				toast.error("Failed to save product.");
 			}
@@ -382,6 +415,15 @@ export const ProductsPage = () => {
 				try {
 					const success = await productService.deleteProduct(productId);
 					if (success) {
+						const nextTotalElements = Math.max(0, tableTotalElements - 1);
+						const nextTotalPages = Math.max(1, Math.ceil(nextTotalElements / productsPerPage));
+
+						removeStoreProduct(productId);
+						setProducts((current) => current.filter((item) => item.id !== productId));
+						setTableProducts((current) => current.filter((item) => item.id !== productId));
+						setTableTotalElements(nextTotalElements);
+						setTableTotalPages(nextTotalPages);
+						setProductPage((current) => Math.min(current, nextTotalPages));
 						toast.success("Product deleted successfully.");
 						await loadData();
 					} else {
@@ -397,41 +439,12 @@ export const ProductsPage = () => {
 		);
 	};
 
-	// Products filtering, sorting and pagination
-	const filteredProducts = tableProducts;
-	const sortedProducts = useMemo(() => {
-		const next = [...filteredProducts];
-
-		if (sortBy === "newest") {
-			return next.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-		}
-
-		if (sortBy === "oldest") {
-			return next.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
-		}
-
-		if (sortBy === "name-desc") {
-			return next.sort((a, b) => b.name.localeCompare(a.name));
-		}
-
-		if (sortBy === "price-asc") {
-			return next.sort(
-				(a, b) =>
-					parseFloat(a.price.replace(/[^0-9.]/g, "")) - parseFloat(b.price.replace(/[^0-9.]/g, "")),
-			);
-		}
-
-		if (sortBy === "price-desc") {
-			return next.sort(
-				(a, b) =>
-					parseFloat(b.price.replace(/[^0-9.]/g, "")) - parseFloat(a.price.replace(/[^0-9.]/g, "")),
-			);
-		}
-
-		return next.sort((a, b) => a.name.localeCompare(b.name));
-	}, [filteredProducts, sortBy]);
 	const totalProductPages = tableTotalPages;
-	const paginatedProducts = sortedProducts;
+	const paginatedProducts = useMemo(() => {
+		const sorted = getSortedProducts(tableProducts, sortBy);
+		const start = (productPage - 1) * productsPerPage;
+		return sorted.slice(start, start + productsPerPage);
+	}, [productPage, productsPerPage, sortBy, tableProducts]);
 
 	const totalProducts = products.length;
 	const totalCategories = categories.length;

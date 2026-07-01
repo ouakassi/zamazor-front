@@ -8,6 +8,7 @@ interface ProductStore {
 	error: string | null;
 	fetchProducts: (force?: boolean) => Promise<Product[]>;
 	getProductById: (id: string) => Promise<Product | null>;
+	removeProductById: (id: string) => void;
 }
 
 export const useProductStore = create<ProductStore>((set, get) => ({
@@ -53,5 +54,11 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 		} catch {
 			return null;
 		}
+	},
+
+	removeProductById: (id: string) => {
+		set((state) => ({
+			products: state.products.filter((product) => product.id !== id),
+		}));
 	},
 }));

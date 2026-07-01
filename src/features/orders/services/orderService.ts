@@ -53,6 +53,16 @@ export interface ChangeOrderStatusRequest {
 	status: string;
 }
 
+export interface PaymentSessionResponse {
+	paymentUrl?: string;
+	url?: string;
+	checkoutUrl?: string;
+	sessionId?: string;
+	id?: string;
+	orderId?: string;
+	[key: string]: unknown;
+}
+
 interface PaginatedResponse<T> {
 	items?: T[];
 	totalElements?: number;
@@ -66,6 +76,7 @@ export interface OrderPageQueryParams {
 	size?: number;
 	status?: string;
 	userFullName?: string;
+	sort?: string | string[];
 }
 
 export interface PaginatedOrdersResult {
@@ -114,12 +125,21 @@ function extractPaginatedOrders(response: unknown, fallbackPage = 1, fallbackSiz
 	};
 }
 
-function buildQueryString(params: Record<string, string | number | undefined>) {
+function buildQueryString(params: Record<string, string | number | Array<string | number> | undefined>) {
 	const query = new URLSearchParams();
 
 	Object.entries(params).forEach(([key, value]) => {
 		if (value === undefined || value === null || value === "") return;
-		query.set(key, String(value));
+
+		if (Array.isArray(value)) {
+			value.forEach((entry) => {
+				if (entry === undefined || entry === null || entry === "") return;
+				query.append(key, String(entry));
+			});
+			return;
+		}
+
+		query.append(key, String(value));
 	});
 
 	return query.toString();
@@ -131,6 +151,7 @@ export const orderService = {
 			const queryString = buildQueryString({
 				page: Math.max(0, (params.page ?? 1) - 1),
 				size: params.size,
+				sort: params.sort,
 			});
 			const response = await privateApiRequest<BackendOrder[]>({
 				url: `${API_ENDPOINTS.ORDERS.ME}${queryString ? `?${queryString}` : ""}`,
@@ -173,6 +194,7 @@ export const orderService = {
 				size: params.size,
 				status: params.status,
 				userFullName: params.userFullName,
+				sort: params.sort,
 			});
 			const response = await privateApiRequest<BackendOrder[]>({
 				url: `${API_ENDPOINTS.ORDERS.ROOT}${queryString ? `?${queryString}` : ""}`,
@@ -247,6 +269,44 @@ export const orderService = {
 		}
 
 		throw new Error("Invalid order response returned by server.");
+	},
+
+	getCheckoutPaymentUrl: async (orderId: string): Promise<string | PaymentSessionResponse | null> => {
+		try {
+			const response = await privateApiRequest<string | PaymentSessionResponse>({
+				url: `${API_ENDPOINTS.ORDERS.CHECKOUT}/${orderId}/pay`,
+				method: "GET",
+			});
+
+			if (isSystemError(response)) {
+				console.error("Get checkout payment URL failed:", response);
+				return null;
+			}
+
+			return response;
+		} catch (error) {
+			console.error("Get checkout payment URL request failed:", error);
+			return null;
+		}
+	},
+
+	verifyCheckoutPayment: async (orderId: string, sessionId: string): Promise<BackendOrder | SystemError | null> => {
+		try {
+			const response = await privateApiRequest<BackendOrder>({
+				url: `${API_ENDPOINTS.ORDERS.CHECKOUT}/${orderId}/verify?sessionId=${encodeURIComponent(sessionId)}`,
+				method: "GET",
+			});
+
+			if (isSystemError(response)) {
+				console.error("Verify checkout payment failed:", response);
+				return response;
+			}
+
+			return response && response.id ? response : null;
+		} catch (error) {
+			console.error("Verify checkout payment request failed:", error);
+			return null;
+		}
 	},
 
 	cancelOrder: async (orderId: string): Promise<boolean> => {

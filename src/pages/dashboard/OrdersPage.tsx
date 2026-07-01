@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import CONFIG from "@/core/config/constants";
@@ -43,6 +43,14 @@ const normalizeOrderStatus = (status: string) => {
 	return ORDER_STATUSES.includes(upper as (typeof ORDER_STATUSES)[number]) ? upper : "PENDING";
 };
 
+const getOrderSortParam = (sortBy: string) => {
+	if (sortBy === "oldest") return "createdAt,asc";
+	if (sortBy === "total-asc") return "total,asc";
+	if (sortBy === "total-desc") return "total,desc";
+	if (sortBy === "status") return "status,asc";
+	return "createdAt,desc";
+};
+
 const ADMIN_ORDER_STATUS_OPTIONS = ORDER_STATUS_OPTIONS.filter((option) => option.value !== "CANCELED");
 
 const formatShippingDetails = (order: BackendOrder | null | undefined) => {
@@ -60,7 +68,7 @@ const formatShippingDetails = (order: BackendOrder | null | undefined) => {
 		phone,
 		fullAddress: [street, city, country].filter(Boolean).join(", "),
 		phoneLabel,
-		tooltipLabel: [street, city, country, phone ? `Phone: ${phoneLabel}` : ""].filter(Boolean).join(" • "),
+		tooltipLabel: [street, city, country, phone ? `Phone: ${phoneLabel}` : ""].filter(Boolean).join(" â€¢ "),
 	};
 };
 
@@ -68,9 +76,6 @@ export const OrdersPage = () => {
 	useDocumentTitle(`Orders Management | ${CONFIG.APP_NAME}`);
 
 	const [orders, setOrders] = useState<BackendOrder[]>([]);
-	const [tableOrders, setTableOrders] = useState<BackendOrder[]>([]);
-	const [tableTotalElements, setTableTotalElements] = useState(0);
-	const [tableTotalPages, setTableTotalPages] = useState(1);
 	const [loading, setLoading] = useState(true);
 	const [selectedOrder, setSelectedOrder] = useState<BackendOrder | null>(null);
 	const [updatingStatusOrderId, setUpdatingStatusOrderId] = useState<string | null>(null);
@@ -86,49 +91,37 @@ export const OrdersPage = () => {
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("newest");
 	const [orderPage, setOrderPage] = useState(1);
+	const [totalOrderPages, setTotalOrderPages] = useState(1);
+	const [totalOrderElements, setTotalOrderElements] = useState(0);
 
-	const loadTableData = useCallback(async () => {
+	const loadData = useCallback(async () => {
+		setLoading(true);
 		try {
 			const result = await orderService.getAllOrdersPage({
 				page: orderPage,
 				size: ORDERS_PER_PAGE,
 				status: statusFilter !== "all" ? statusFilter : undefined,
+				userFullName: orderSearch.trim() || undefined,
+				sort: getOrderSortParam(sortBy),
 			});
-
-			setTableOrders(result.items);
-			setTableTotalElements(result.totalElements);
-			setTableTotalPages(Math.max(1, result.totalPages));
-		} catch (error) {
-			console.error("Failed to load dashboard orders table:", error);
-			setTableOrders([]);
-			setTableTotalElements(0);
-			setTableTotalPages(1);
-		}
-	}, [orderPage, statusFilter]);
-
-	const loadData = useCallback(async () => {
-		setLoading(true);
-		try {
-			const data = await orderService.getAllOrders();
-			setOrders(data);
-			await loadTableData();
+			setOrders(result.items);
+			setTotalOrderPages(result.totalPages || 1);
+			setTotalOrderElements(result.totalElements || 0);
 		} catch (error) {
 			console.error("Failed to load dashboard orders:", error);
 			toast.error("Failed to refresh orders list.");
 		} finally {
 			setLoading(false);
 		}
-	}, [loadTableData]);
+	}, [orderPage, orderSearch, sortBy, statusFilter]);
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		void loadData();
+		const timer = window.setTimeout(() => {
+			void loadData();
+		}, 0);
+
+		return () => window.clearTimeout(timer);
 	}, [loadData]);
-
-	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		void loadTableData();
-	}, [loadTableData]);
 
 	const showConfirm = (
 		title: string,
@@ -229,72 +222,28 @@ export const OrdersPage = () => {
 		);
 	};
 
-	const normalizedSearch = orderSearch.trim().toLowerCase();
-
-	const filteredOrders = useMemo(() => {
-		const nextOrders = tableOrders.filter((order) => {
-			if (!normalizedSearch) return true;
-
-			const itemMatch = order.items.some((item) =>
-				(item.product?.name || "").toLowerCase().includes(normalizedSearch),
-			);
-
-			return (
-				order.id.toLowerCase().includes(normalizedSearch) ||
-				(order.shippingAddress || "").toLowerCase().includes(normalizedSearch) ||
-				order.status.toLowerCase().includes(normalizedSearch) ||
-				itemMatch
-			);
-		}).sort((a, b) => {
-			if (sortBy === "oldest") {
-				return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-			}
-
-			if (sortBy === "total-asc") {
-				return (a.total || 0) - (b.total || 0);
-			}
-
-			if (sortBy === "total-desc") {
-				return (b.total || 0) - (a.total || 0);
-			}
-
-			if (sortBy === "status") {
-				return a.status.localeCompare(b.status);
-			}
-
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		});
-
-		return nextOrders;
-	}, [normalizedSearch, tableOrders, sortBy]);
-
-	const totalOrderPages = tableTotalPages;
 	const safeOrderPage = Math.min(orderPage, totalOrderPages);
-	const paginatedOrders = filteredOrders;
+const paginatedOrders = orders;
 
-	const isFilterActive = orderSearch !== "" || statusFilter !== "all" || sortBy !== "newest";
+const isFilterActive = orderSearch !== "" || statusFilter !== "all" || sortBy !== "newest";
 
-	const resetFilters = () => {
-		setOrderSearch("");
-		setStatusFilter("all");
-		setSortBy("newest");
-		setOrderPage(1);
-	};
+const resetFilters = () => {
+	setOrderSearch("");
+	setStatusFilter("all");
+	setSortBy("newest");
+	setOrderPage(1);
+};
 
-	const statusCounts = useMemo(
-		() =>
-			orders.reduce<Record<string, number>>((acc, order) => {
-				acc[order.status] = (acc[order.status] || 0) + 1;
-				return acc;
-			}, {}),
-		[orders],
-	);
-
+const statusCounts = useMemo(
+	() =>
+		orders.reduce<Record<string, number>>((acc, order) => {
+			acc[order.status] = (acc[order.status] || 0) + 1;
+			return acc;
+		}, {}),
+	[orders],
+);
 	const pendingOrders = statusCounts.PENDING || 0;
-	const confirmedOrders = statusCounts.CONFIRMED || 0;
-	const processingOrders = statusCounts.PROCESSING || 0;
-	const shippedOrders = statusCounts.SHIPPED || 0;
-	const inProgressOrders = confirmedOrders + processingOrders + shippedOrders;
+	const paidOrders = statusCounts.PAID || 0;
 	const settledOrders = orders.filter((order) => ["PAID", "COMPLETED", "DELIVERED"].includes(order.status));
 	const totalSales = settledOrders.reduce((sum, order) => sum + (order.total || 0), 0);
 	const canChangeStatus = (status: string) => !isFinalOrderStatus(normalizeOrderStatus(status));
@@ -332,7 +281,7 @@ export const OrdersPage = () => {
 				{[
 					{
 						label: "Total Orders",
-						value: orders.length.toString(),
+						value: totalOrderElements.toString(),
 						subtitle: "Across the registry",
 						accent: "bg-slate-50 text-slate-700",
 						icon: Folder,
@@ -345,9 +294,9 @@ export const OrdersPage = () => {
 						icon: Clock3,
 					},
 					{
-						label: "In Progress",
-						value: inProgressOrders.toString(),
-						subtitle: "Confirmed, processing, shipped",
+						label: "Paid",
+						value: paidOrders.toString(),
+						subtitle: "Orders completed payment",
 						accent: "bg-sky-50 text-sky-700",
 						icon: CheckCircle2,
 					},
@@ -445,12 +394,12 @@ export const OrdersPage = () => {
 
 						<div className="flex items-center gap-2">
 							<div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2 text-xs font-bold text-slate-500">
-								{tableTotalElements === 0
+								{totalOrderElements === 0
 									? "No orders found"
-									: `Showing ${Math.min(tableTotalElements, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
+									: `Showing ${Math.min(totalOrderElements, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
 											safeOrderPage * ORDERS_PER_PAGE,
-											tableTotalElements,
-									  )} of ${tableTotalElements}`}
+											orders.length,
+									  )} of ${orders.length}`}
 							</div>
 							{totalOrderPages > 1 && (
 								<div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/50 p-0.5 select-none">
@@ -480,43 +429,6 @@ export const OrdersPage = () => {
 								</div>
 							)}
 						</div>
-					</div>
-				</div>
-
-				<div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3">
-					<div className="text-xs font-bold font-sans text-slate-500">
-						{tableTotalElements === 0
-							? "No orders found"
-							: `Showing ${Math.min(tableTotalElements, (safeOrderPage - 1) * ORDERS_PER_PAGE + 1)}-${Math.min(
-									safeOrderPage * ORDERS_PER_PAGE,
-									tableTotalElements,
-							  )} of ${tableTotalElements} orders`}
-					</div>
-
-					<div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/50 p-0.5 select-none">
-						<Button
-							variant="outline"
-							size="icon"
-							disabled={safeOrderPage === 1}
-							onClick={() => setOrderPage((page) => Math.max(1, page - 1))}
-							className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-40"
-							title="Previous page"
-						>
-							&larr;
-						</Button>
-						<span className="min-w-[55px] px-1.5 text-center text-[10px] font-bold text-slate-500">
-							{safeOrderPage} / {totalOrderPages}
-						</span>
-						<Button
-							variant="outline"
-							size="icon"
-							disabled={safeOrderPage === totalOrderPages}
-							onClick={() => setOrderPage((page) => Math.min(totalOrderPages, page + 1))}
-							className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-40"
-							title="Next page"
-						>
-							&rarr;
-						</Button>
 					</div>
 				</div>
 
@@ -818,3 +730,4 @@ export const OrdersPage = () => {
 		</div>
 	);
 };
+

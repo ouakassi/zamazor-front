@@ -11,7 +11,6 @@ import { useLocation, useNavigate } from "react-router";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { authService } from "../../services/authService";
 import { isSystemError } from "@/shared/types";
-import { notify } from "@/lib/notify";
 import { useLanguage } from "@/shared/context/LanguageContext";
 import { useAuthStore } from "../../stores/authStore";
 
@@ -21,11 +20,46 @@ export const LoginForm = () => {
 	const { language } = useLanguage();
 	const from = location.state?.from?.pathname || APP_ROUTES.HOME;
 
+	const getLoginErrorMessage = (response: unknown) => {
+		if (!isSystemError(response)) {
+			return language === "fr"
+				? "Impossible de se connecter."
+				: "Unable to sign in.";
+		}
+
+		if (response.status === 401) {
+			return language === "fr"
+				? "Adresse e-mail ou mot de passe incorrect."
+				: "Incorrect email or password.";
+		}
+
+		if (response.status === 403) {
+			return language === "fr"
+				? "Votre accès est refusé."
+				: "Your access is denied.";
+		}
+
+		if (response.status === 429) {
+			return language === "fr"
+				? "Trop de tentatives. Veuillez réessayer plus tard."
+				: "Too many attempts. Please try again later.";
+		}
+
+		return (
+			response.description ||
+			response.title ||
+			(language === "fr" ? "Connexion impossible." : "Login failed.")
+		);
+	};
+
 	const onSubmit = async (data: LoginRequest) => {
-		const payload = loginRequestSchema.parse(data);
-		const response = await authService.login(payload);
+		const response = await authService.login(data);
 		if (isSystemError(response)) {
-			if (response.code === "REQUEST_CANCELLED") return;
+			setError("root", {
+				type: "server",
+				message: getLoginErrorMessage(response),
+			});
+			return;
 		} else {
 			const user = useAuthStore.getState().user;
 			if (user?.role === "ADMIN") {
@@ -36,22 +70,11 @@ export const LoginForm = () => {
 		}
 	};
 
-	const onError = () => {
-		notify.error(
-			language === "fr" ? "Erreur de validation" : "Validation Error",
-			{
-				description:
-					language === "fr"
-						? "Veuillez corriger les erreurs dans le formulaire."
-						: "Please fix the errors in the form.",
-				requiresInternet: false,
-			},
-		);
-	};
-
 	const {
 		register,
 		handleSubmit,
+		setError,
+		clearErrors,
 		formState: { errors, isSubmitting, isDirty },
 	} = useForm({
 		resolver: zodResolver(loginRequestSchema),
@@ -59,7 +82,7 @@ export const LoginForm = () => {
 
 	return (
 		<form
-			onSubmit={handleSubmit(onSubmit, onError)}
+			onSubmit={handleSubmit(onSubmit)}
 			noValidate
 			className="space-y-6"
 		>
@@ -76,11 +99,18 @@ export const LoginForm = () => {
 				errors={errors}
 			/>
 
+			{errors.root?.message && (
+				<p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+					{errors.root.message}
+				</p>
+			)}
+
 			<OriginButton
 				type="submit"
 				variant="emerald"
 				loading={isSubmitting}
 				disabled={!isDirty}
+				onClick={() => clearErrors("root")}
 				className="w-full flex justify-center rounded-lg font-semibold"
 			>
 				{isSubmitting

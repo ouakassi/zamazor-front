@@ -6,14 +6,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useLanguage } from "@/shared/context/LanguageContext";
-import {
-	NavigationMenu,
-	NavigationMenuContent,
-	NavigationMenuItem,
-	NavigationMenuLink,
-	NavigationMenuList,
-	NavigationMenuTrigger,
-} from "@/shared/components/ui/navigation-menu";
 import { OriginButton } from "@/shared/components/ui/origin-button";
 import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { useBookmarkStore } from "@/features/products/stores/bookmarkStore";
@@ -22,12 +14,6 @@ import { AuthStatus } from "@/features/auth/types";
 import { productService } from "@/features/products/services/productService";
 import type { Product } from "@/core/config/productsData";
 import {
-	DumbbellIcon,
-	LeafIcon,
-	ZapIcon,
-	MoonIcon,
-	ShieldCheckIcon,
-	HeartPulseIcon,
 	MenuIcon,
 	X as XIcon,
 	SearchIcon,
@@ -40,39 +26,6 @@ import {
 	MessageSquare,
 	Award,
 } from "lucide-react";
-
-const categories = [
-	{
-		name: "Protein",
-		copy: "Lean muscle support",
-		icon: DumbbellIcon,
-	},
-	{
-		name: "Greens",
-		copy: "Daily micronutrients",
-		icon: LeafIcon,
-	},
-	{
-		name: "Energy",
-		copy: "Clean focus blends",
-		icon: ZapIcon,
-	},
-	{
-		name: "Recovery",
-		copy: "Sleep and repair",
-		icon: MoonIcon,
-	},
-	{
-		name: "Immunity",
-		copy: "Everyday defense",
-		icon: ShieldCheckIcon,
-	},
-	{
-		name: "Wellness",
-		copy: "Habits that last",
-		icon: HeartPulseIcon,
-	},
-];
 
 
 
@@ -170,7 +123,7 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 				)}
 			>
 
-				{/* 🛍️ Row 2: Main Brand & Action Row */}
+				{/* Main Brand & Action Row */}
 				<div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 sm:px-6 lg:gap-6 lg:px-6">
 					
 					{/* Left: Mobile Menu Toggle & Brand Logo */}
@@ -420,40 +373,9 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 					)}
 				</div>
 
-				{/* 🧭 Row 3: Sub-Navigation Bar (Desktop Only) */}
+				{/* Desktop quick links */}
 				<div className="hidden border-t border-emerald-900/5 bg-transparent py-2 px-6 lg:flex items-center justify-between font-sans">
 					<div className="flex items-center gap-1.5">
-						<NavigationMenu>
-							<NavigationMenuList className="gap-1">
-								<NavigationMenuItem>
-									<NavigationMenuTrigger className="h-8 bg-transparent text-xs font-extrabold text-emerald-900 hover:bg-emerald-100/50 hover:text-emerald-950 data-open:bg-emerald-100/50 rounded-lg">
-										Shop Categories
-									</NavigationMenuTrigger>
-									<NavigationMenuContent>
-										<div className="grid w-[620px] grid-cols-2 gap-1 p-2 bg-white">
-											{categories.map(({ name, copy, icon: Icon }) => (
-												<NavigationMenuLink
-													key={name}
-													render={<Link to={`${APP_ROUTES.SHOP}?category=${encodeURIComponent(name)}`} />}
-													className="flex flex-col items-start gap-1 p-3 rounded-lg hover:bg-emerald-50/50"
-												>
-													<span className="flex items-center gap-2 font-black text-slate-950">
-														<Icon className="size-4 text-emerald-700" />
-														{name}
-													</span>
-													<span className="text-sm leading-5 text-slate-500">
-														{copy}
-													</span>
-												</NavigationMenuLink>
-											))}
-										</div>
-									</NavigationMenuContent>
-								</NavigationMenuItem>
-							</NavigationMenuList>
-						</NavigationMenu>
-
-						<span className="text-slate-300 text-xs">|</span>
-
 						<Link to={APP_ROUTES.SHOP} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-emerald-900 px-2 py-1 rounded-md hover:bg-emerald-50/50 transition-colors">
 							<Store className="size-3.5 text-emerald-850" />
 							{t("nav.shop")}
@@ -509,28 +431,6 @@ export const Header = React.forwardRef<HTMLElement, { className?: string }>(
 									</span>
 								)}
 							</Link>
-
-							{/* Categories display inside mobile drawer */}
-							<div className="space-y-1 pt-1">
-								<p className="px-3 text-[10px] font-black uppercase text-emerald-900/40 tracking-widest">
-									Product Categories
-								</p>
-								<div className="grid grid-cols-2 gap-1.5 pl-2 pt-1">
-									{categories.map(({ name, icon: Icon }) => (
-										<Link
-											key={name}
-											to={`${APP_ROUTES.SHOP}?category=${encodeURIComponent(name)}`}
-											onClick={() => setMobileMenuOpen(false)}
-											className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-emerald-50 hover:text-emerald-900 text-xs transition-colors"
-										>
-											<Icon className="size-3.5 text-emerald-700 shrink-0" />
-											{name}
-										</Link>
-									))}
-								</div>
-							</div>
-
-							<div className="border-t border-emerald-900/5 my-2"></div>
 
 							<Link
 								to="/#reviews"

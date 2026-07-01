@@ -17,17 +17,27 @@ import { useAuthStore } from "@/features/auth/stores/authStore";
 import { useLanguage } from "@/shared/context/LanguageContext";
 import { parsePrice } from "@/shared/utils/price";
 import { buildShippingAddressString, toAddressFormValues } from "@/features/addresses/utils/addressHelpers";
+import { isSystemError } from "@/shared/types";
 import {
 	ArrowLeft,
-	CreditCard,
 	Lock,
 	CheckCircle2,
 	ShoppingBag,
 	Truck,
 	ShieldCheck,
 	Sparkles,
-	ShieldAlert
+	Loader2,
 } from "lucide-react";
+
+const StripeMark = () => (
+	<svg viewBox="0 0 24 24" aria-hidden="true" className="size-5">
+		<rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="#635BFF" />
+		<path
+			d="M14.9 9.2c-.8-.3-1.6-.5-2.4-.5-1 0-1.5.4-1.5.9 0 .6.6.9 2 1.4 2.2.8 3.2 1.7 3.2 3.3 0 2-1.5 3.1-3.9 3.1-1.1 0-2.2-.2-3-.6v-2.1c.8.4 1.9.8 2.9.8 1 0 1.6-.4 1.6-1 0-.7-.6-1-2-1.5-2.1-.8-3.1-1.7-3.1-3.2 0-1.8 1.5-3 3.8-3 .9 0 1.8.1 2.5.4v2z"
+			fill="#fff"
+		/>
+	</svg>
+);
 
 export const CheckoutPage = () => {
 	const navigate = useNavigate();
@@ -39,19 +49,16 @@ export const CheckoutPage = () => {
 
 	// Retrieve discount from location state (applied promo code from cart)
 	const discountPercentage = (location.state as { discount?: number })?.discount || 0;
+	const isCheckoutCancelled = location.pathname.endsWith("/cancel");
+	const cancelledOrderId = new URLSearchParams(location.search).get("orderId");
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+	const [paymentError, setPaymentError] = useState("");
 	const [isSuccess, setIsSuccess] = useState(false);
 	const [orderNumber, setOrderNumber] = useState("");
 	const [completedOrderTotal, setCompletedOrderTotal] = useState<number | null>(null);
 	const user = useAuthStore((state) => state.user);
-
-	const formatCardNumberInput = (value: string) => value.replace(/\D/g, "").slice(0, 16);
-	const formatExpiryInput = (value: string) => {
-		const digits = value.replace(/\D/g, "").slice(0, 4);
-		if (digits.length <= 2) return digits;
-		return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-	};
 
 	const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm<CheckoutFormValues>({
 		resolver: zodResolver(checkoutSchema),
@@ -63,9 +70,6 @@ export const CheckoutPage = () => {
 			city: "",
 			phone: "",
 			country: "Morocco",
-			cardNumber: "",
-			cardExpiry: "",
-			cardCvv: "",
 		}
 	});
 
@@ -99,14 +103,97 @@ export const CheckoutPage = () => {
 		};
 	}, [user, setValue]);
 
+	useEffect(() => {
+		const params = new URLSearchParams(location.search);
+		const orderId = params.get("orderId");
+		const sessionId = params.get("sessionId");
+		const fallbackTotal = subtotal - subtotal * (discountPercentage / 100);
+
+		if (!orderId || !sessionId || isSuccess) {
+			return;
+		}
+
+		let active = true;
+
+		const verifyPayment = async () => {
+			setIsVerifyingPayment(true);
+			setPaymentError("");
+
+			const verified = await orderService.verifyCheckoutPayment(orderId, sessionId);
+			if (!active) return;
+
+			if (!verified || isSystemError(verified)) {
+				setIsVerifyingPayment(false);
+				setPaymentError(language === "fr" ? "La vérification du paiement a échoué." : "Payment verification failed.");
+				toast.error(language === "fr" ? "Vérification Stripe échouée." : "Stripe verification failed.");
+				return;
+			}
+
+			const finalOrderTotal = Number.isFinite(verified.total) ? verified.total : fallbackTotal;
+			clearCart();
+			setCompletedOrderTotal(finalOrderTotal);
+			setOrderNumber(verified.id.slice(0, 8).toUpperCase());
+			setIsSuccess(true);
+			setIsVerifyingPayment(false);
+			sessionStorage.removeItem("zamazor.pending-payment-order-id");
+			toast.success(language === "fr" ? "Paiement confirmé avec succès !" : "Payment confirmed successfully!");
+		};
+
+		void verifyPayment();
+
+		return () => {
+			active = false;
+		};
+	}, [clearCart, discountPercentage, isSuccess, language, location.search, subtotal]);
+
 	useDocumentTitle(`${t("checkout.title")} | Zamazor`);
 
 	// Calculations
 	const discountAmount = subtotal * (discountPercentage / 100);
 	const shippingCost: number = 0;
 	const orderTotal = subtotal - discountAmount;
+	const resolvePaymentUrl = (value: unknown) => {
+		if (typeof value === "string") return value;
+		if (!value || typeof value !== "object") return null;
+
+		const paymentResponse = value as {
+			paymentUrl?: string;
+			url?: string;
+			checkoutUrl?: string;
+		};
+
+		return paymentResponse.paymentUrl || paymentResponse.url || paymentResponse.checkoutUrl || null;
+	};
+
+	if (isCheckoutCancelled) {
+		return (
+			<div className="flex min-h-screen flex-col items-center justify-center bg-[#fcfdfa] p-4 text-center">
+				<ShieldCheck className="mb-4 size-16 text-amber-700/30" />
+				<h1 className="text-3xl font-playfair text-slate-900">
+					{language === "fr" ? "Paiement annulé" : "Payment canceled"}
+				</h1>
+				<p className="mt-2 max-w-md text-slate-500">
+					{language === "fr"
+						? `Votre paiement Stripe a été annulé${cancelledOrderId ? ` pour la commande ${cancelledOrderId.slice(0, 8).toUpperCase()}` : ""}.`
+						: `Your Stripe payment was canceled${cancelledOrderId ? ` for order ${cancelledOrderId.slice(0, 8).toUpperCase()}` : ""}.`}
+				</p>
+				<div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+					<Button asChild className="rounded-xl bg-emerald-900 px-6 text-white hover:bg-emerald-950">
+						<Link to={APP_ROUTES.CHECKOUT}>{language === "fr" ? "Revenir au paiement" : "Return to checkout"}</Link>
+					</Button>
+					<Button asChild variant="outline" className="rounded-xl border-emerald-900/10 px-6 text-emerald-900 hover:bg-emerald-50">
+						<Link to={APP_ROUTES.SHOP}>{language === "fr" ? "Retour à la boutique" : "Back to shop"}</Link>
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	const handleCheckoutSubmit = async (data: CheckoutFormValues) => {
+		await submitPayment(data);
+	};
+
+	const submitPayment = async (data: CheckoutFormValues) => {
 		setIsSubmitting(true);
 
 		try {
@@ -151,21 +238,42 @@ export const CheckoutPage = () => {
 				});
 			}
 
-			setCompletedOrderTotal(Number.isFinite(response.total) ? response.total : orderTotal);
+			sessionStorage.setItem("zamazor.pending-payment-order-id", response.id);
+			sessionStorage.setItem(
+				"zamazor.pending-payment-total",
+				String(Number.isFinite(response.total) ? response.total : orderTotal),
+			);
+			sessionStorage.setItem("zamazor.pending-payment-email", data.email);
+
+			const paymentResponse = await orderService.getCheckoutPaymentUrl(response.id);
+			const paymentUrl = resolvePaymentUrl(paymentResponse);
+
+			if (!paymentUrl) {
+				throw new Error("The backend did not return a valid Stripe payment URL.");
+			}
+
 			setIsSubmitting(false);
-			clearCart();
-			setIsSuccess(true);
-			setOrderNumber(response.id.slice(0, 8).toUpperCase());
-			toast.success(language === "fr" ? "Commande passée avec succès !" : "Order placed successfully!");
-		} catch {
+			toast.success(language === "fr" ? "Redirection vers le paiement sécurisé..." : "Redirecting to secure payment...");
+			window.location.assign(paymentUrl);
+		} catch (error) {
 			setIsSubmitting(false);
-			toast.error(language === "fr" ? "Une erreur s'est produite lors de la commande." : "An error occurred while placing your order. Please try again.");
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: language === "fr"
+						? "Une erreur s'est produite lors de la commande."
+						: "An error occurred while placing your order. Please try again.";
+			toast.error(message);
+			setPaymentError(message);
 		}
 	};
 
 	const handleSuccessReturn = () => {
 		clearCart();
-		navigate(APP_ROUTES.HOME);
+		sessionStorage.removeItem("zamazor.pending-payment-order-id");
+		sessionStorage.removeItem("zamazor.pending-payment-total");
+		sessionStorage.removeItem("zamazor.pending-payment-email");
+		navigate(APP_ROUTES.SHOP);
 	};
 
 	if (items.length === 0 && !isSuccess) {
@@ -175,7 +283,7 @@ export const CheckoutPage = () => {
 				<h1 className="text-3xl font-playfair text-slate-900">{language === "fr" ? "Votre panier est vide" : "Your checkout is empty"}</h1>
 				<p className="mt-2 text-slate-500">{language === "fr" ? "Il n'y a aucun article dans votre panier." : "There are no items in your cart to checkout."}</p>
 				<Button asChild className="mt-6 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl">
-					<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
+					<Link to={APP_ROUTES.SHOP}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 				</Button>
 			</div>
 		);
@@ -224,6 +332,28 @@ export const CheckoutPage = () => {
 		);
 	}
 
+	if (isVerifyingPayment) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-[#fcfdfa] p-4">
+				<div className="flex flex-col items-center gap-4 rounded-3xl border border-emerald-900/10 bg-white px-8 py-10 text-center shadow-xl shadow-emerald-950/5">
+					<div className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-800">
+						<Loader2 className="size-6 animate-spin" />
+					</div>
+					<div>
+						<h1 className="text-2xl font-playfair text-slate-950">
+							{language === "fr" ? "Vérification du paiement" : "Verifying payment"}
+						</h1>
+						<p className="mt-2 max-w-sm text-sm text-slate-500">
+							{language === "fr"
+								? "Nous vérifions votre session Stripe et finalisons la commande."
+								: "We are verifying your Stripe session and finalizing the order."}
+						</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="min-h-screen bg-[#fcfdfa] text-slate-900 selection:bg-emerald-100 flex flex-col justify-between">
 			<div>
@@ -239,7 +369,7 @@ export const CheckoutPage = () => {
 						<ArrowLeft className="size-4" />
 						Cart
 					</Link>
-					<Link to={APP_ROUTES.HOME} className="flex items-center gap-2">
+					<Link to={APP_ROUTES.SHOP} className="flex items-center gap-2">
 						<img src={logo} alt="Zamazor" className="size-9 rounded-lg border border-emerald-900/10 bg-white" />
 						<span className="text-lg font-black tracking-normal text-emerald-950">Zamazor</span>
 					</Link>
@@ -254,16 +384,9 @@ export const CheckoutPage = () => {
 					<div className="grid gap-8 lg:grid-cols-[1fr_380px] items-start">
 						{/* Checkout details Form */}
 						<form onSubmit={handleSubmit(handleCheckoutSubmit)} className="space-y-6">
-							{/* Admin Sandbox/Test Mode Warning Banner */}
-							{user?.role === "ADMIN" && (
-								<div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-800 shadow-xs">
-									<ShieldAlert className="size-5 shrink-0 text-amber-700 mt-0.5" />
-									<div>
-										<p className="text-sm font-bold text-slate-900">Administrator Sandbox Mode</p>
-										<p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
-											You are logged in as an Admin. Standard credit card operations will run in Sandbox Simulation. No real charges will be made.
-										</p>
-									</div>
+							{paymentError && (
+								<div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+									{paymentError}
 								</div>
 							)}
 
@@ -387,92 +510,54 @@ export const CheckoutPage = () => {
 							<div className="bg-white rounded-3xl border border-emerald-900/5 p-5 sm:p-6 shadow-xs">
 								<h2 className="font-playfair text-xl font-bold text-slate-950 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
 									<span className="size-6 bg-emerald-900 text-white rounded-full flex items-center justify-center text-xs font-bold font-sans">3</span>
-									{t("checkout.step3")}
+									{language === "fr" ? "Paiement Stripe" : "Stripe payment"}
 								</h2>
-								<div className="space-y-4">
-									{/* Credit card tab header */}
-									<div className="flex gap-2 p-1.5 bg-[#f0f7ec] rounded-xl border border-emerald-900/10">
-										<button type="button" className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg bg-emerald-900 text-white shadow-xs">
-											<CreditCard className="size-4" />
-											{language === "fr" ? "Carte Bancaire" : "Credit Card"}
-										</button>
+								<div className="rounded-2xl border border-emerald-900/10 bg-[#f7fbf3] p-4">
+									<div className="flex items-start gap-3">
+										<div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white ring-1 ring-[#635BFF]/15 shadow-sm">
+											<StripeMark />
+										</div>
+										<div className="min-w-0">
+											<p className="text-sm font-bold text-slate-950">
+												{language === "fr" ? "Paiement sécurisé via Stripe" : "Secure payment via Stripe"}
+											</p>
+											<p className="mt-1 text-sm leading-6 text-slate-500">
+												{language === "fr"
+													? "Vous serez redirigé vers Stripe pour finaliser le paiement de manière sécurisée. Aucune donnée bancaire n'est stockée dans le frontend."
+													: "You will be redirected to Stripe to complete your payment securely. No card details are stored in the frontend."}
+											</p>
+										</div>
 									</div>
 
-									<div className="space-y-3">
-										<div>
-											<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.card")}</label>
-											<Input
-												type="text"
-												placeholder="4111 2222 3333 4444"
-												inputMode="numeric"
-												maxLength={16}
-												{...register("cardNumber", {
-													onChange: (e) => {
-														const next = formatCardNumberInput(e.target.value);
-														setValue("cardNumber", next, { shouldDirty: true, shouldValidate: true });
-													},
-												})}
-												className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
-											/>
-											{errors.cardNumber && (
-												<p className="text-xs text-rose-600 mt-1 font-bold">{errors.cardNumber.message}</p>
-											)}
-										</div>
- 
-										<div className="grid grid-cols-2 gap-3">
-											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.expiry")}</label>
-												<Input
-													type="text"
-													placeholder="MM/YY"
-													inputMode="numeric"
-													maxLength={5}
-													{...register("cardExpiry", {
-														onChange: (e) => {
-															const next = formatExpiryInput(e.target.value);
-															setValue("cardExpiry", next, { shouldDirty: true, shouldValidate: true });
-														},
-													})}
-													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
-												/>
-												{errors.cardExpiry && (
-													<p className="text-xs text-rose-600 mt-1 font-bold">{errors.cardExpiry.message}</p>
-												)}
-											</div>
-											<div>
-												<label className="text-xs font-black uppercase text-slate-400 tracking-wider block mb-1.5">{t("checkout.cvv")}</label>
-												<Input
-													type="password"
-													maxLength={4}
-													placeholder="•••"
-													{...register("cardCvv")}
-													className="h-11 rounded-xl border-emerald-900/10 focus-visible:ring-emerald-800 bg-[#fbfcf9]"
-												/>
-												{errors.cardCvv && (
-													<p className="text-xs text-rose-600 mt-1 font-bold">{errors.cardCvv.message}</p>
-												)}
-											</div>
-										</div>
+									<div className="mt-4 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+										<span className="rounded-full border border-emerald-900/10 bg-white px-2.5 py-1">SSL protected</span>
+										<span className="rounded-full border border-emerald-900/10 bg-white px-2.5 py-1">Stripe Checkout</span>
+										<span className="rounded-full border border-emerald-900/10 bg-white px-2.5 py-1">Secure redirect</span>
 									</div>
 								</div>
 							</div>
 
-							{/* Checkout Action button */}
-							<OriginButton
-								type="submit"
-								variant="emerald"
-								disabled={isSubmitting}
-								className="w-full h-14 rounded-2xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/10 text-base"
-							>
-								{isSubmitting ? (
-									<span>{t("checkout.submitting")}</span>
-								) : (
-									<>
-										<Lock className="size-4" />
-										{language === "fr" ? "Valider la Commande" : "Complete Order"} &bull; {orderTotal.toFixed(2)} MAD
-									</>
-								)}
-							</OriginButton>
+							{/* Checkout Action buttons */}
+							<div className="grid gap-3">
+								<OriginButton
+									type="submit"
+									variant="emerald"
+									disabled={isSubmitting}
+									className="w-full h-14 rounded-2xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/10 text-base"
+								>
+									{isSubmitting ? (
+										<>
+											<Loader2 className="size-4 animate-spin" />
+											<span>{language === "fr" ? "Redirection en cours..." : "Redirecting..."}</span>
+										</>
+									) : (
+										<>
+											<Lock className="size-4" />
+											{language === "fr" ? "Payer avec Stripe" : "Pay with Stripe"} &bull; {orderTotal.toFixed(2)} MAD
+										</>
+									)}
+								</OriginButton>
+							</div>
 						</form>
 
 						{/* Right Column: Order Review */}

@@ -17,6 +17,8 @@ import { CartPage } from "@/pages/public/CartPage";
 import { CheckoutPage } from "@/pages/public/CheckoutPage";
 import { ShopPage } from "@/pages/public/ShopPage";
 import { WishlistPage } from "@/pages/public/WishlistPage";
+import { StaticInfoPage } from "@/pages/public/StaticInfoPage";
+import { FAQPage } from "@/pages/public/FAQPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { useScrollToTop } from "@/shared/hooks/use-scroll-to-top";
 import { MainLayout } from "@/shared/layouts/MainLayout";
@@ -52,6 +54,54 @@ const router = createBrowserRouter([
 					{
 						path: APP_ROUTES.WISHLIST,
 						element: <WishlistPage />,
+					},
+					{
+						path: APP_ROUTES.CONTACT,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.FAQ,
+						element: <FAQPage />,
+					},
+					{
+						path: APP_ROUTES.STORY,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.BLOG,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.HELP,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.CHAT,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.RETURNS,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.SHIPPING,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.BULK,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.ACCESSIBILITY,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.TERMS,
+						element: <StaticInfoPage />,
+					},
+					{
+						path: APP_ROUTES.PRIVACY,
+						element: <StaticInfoPage />,
 					},
 					{
 						element: <RequireAuth />,
@@ -104,6 +154,14 @@ const router = createBrowserRouter([
 				children: [
 					{
 						path: APP_ROUTES.CHECKOUT,
+						element: <CheckoutPage />,
+					},
+					{
+						path: APP_ROUTES.CHECKOUT_SUCCESS,
+						element: <CheckoutPage />,
+					},
+					{
+						path: APP_ROUTES.CHECKOUT_CANCEL,
 						element: <CheckoutPage />,
 					},
 				],

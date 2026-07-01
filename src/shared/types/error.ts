@@ -6,9 +6,9 @@ const systemErrorSchema = z.object({
 	type: z.string().default("about:blank"),
 	status: z.number(),
 	title: z.string(),
-	detail: z.string(),
+	detail: z.string().default(""),
 	instance: z.string().optional(),
-	description: z.string(),
+	description: z.string().default(""),
 });
 export type SystemError = z.infer<typeof systemErrorSchema>;
 
@@ -57,10 +57,10 @@ const createRuntimeError = (error: unknown) =>
 const createUnexpectedError = (error: AxiosError) =>
 	({
 		type: "about:blank",
-		title: error.response!.statusText ?? "Server Error",
-		status: error.response!.status ?? 500,
-		description: "The server returned an unrecognized error layout format.",
-		detail: error.message,
+		title: error.response?.statusText?.trim() || "Server Error",
+		status: error.response?.status ?? 500,
+		description: "Unexpected server response.",
+		detail: error.message || "The request failed unexpectedly.",
 		code: "SYSTEM_ERROR",
 	}) satisfies SystemError;
 

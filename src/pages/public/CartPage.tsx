@@ -48,7 +48,7 @@ export const CartPage = () => {
 								{t("cart.emptyDesc")}
 							</p>
 							<Button asChild className="mt-8 bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl h-11 px-6">
-								<Link to={APP_ROUTES.HOME}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
+								<Link to={APP_ROUTES.SHOP}>{language === "fr" ? "Parcourir les formules" : "Browse formulas"}</Link>
 							</Button>
 						</div>
 					) : (
@@ -125,7 +125,7 @@ export const CartPage = () => {
 								))}
 
 								<button
-									onClick={() => navigate(APP_ROUTES.HOME)}
+									onClick={() => navigate(APP_ROUTES.SHOP)}
 									className="flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors pt-4 group cursor-pointer"
 								>
 									<ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />

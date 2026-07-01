@@ -46,6 +46,7 @@ export const authService = {
 					title: "Login successful!",
 					description: "You’re all set — let’s get started.",
 				},
+				ignoreErrors: true,
 			},
 		);
 

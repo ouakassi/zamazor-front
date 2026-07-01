@@ -7,7 +7,9 @@ import { useCartStore } from "@/shared/hooks/use-cart-store";
 import { AuthStatus } from "../types";
 
 export const userService = {
-	fetchCurrentUser: async () => {
+	fetchCurrentUser: async (options?: { syncCommerceState?: boolean }) => {
+		const syncCommerceState = options?.syncCommerceState ?? true;
+
 		const response = await privateApiRequest<User>(
 			{ url: API_ENDPOINTS.AUTH.ME, method: "GET" },
 			{ ignoreErrors: true },
@@ -26,9 +28,11 @@ export const userService = {
 		const user = parsed.data;
 		useAuthStore.setState({ user, status: AuthStatus.Authenticated });
 
-		useCartStore.getState().syncWithBackend().catch((err) => {
-			console.warn("Failed to sync cart after fetching user:", err);
-		});
+		if (syncCommerceState) {
+			useCartStore.getState().syncWithBackend().catch((err) => {
+				console.warn("Failed to sync cart after fetching user:", err);
+			});
+		}
 
 		return user;
 	},
