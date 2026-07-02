@@ -15,7 +15,7 @@ export const lowStockProductSchema = z.object({
 	id: z.uuid(),
 	name: z.string(),
 	stockQuantity: z.number().int().nonnegative(),
-	category: z.string()
+	category: z.string(),
 });
 
 export const categorySummarySchema = z.object({
@@ -46,3 +46,13 @@ export const dashboardOverviewSchema = z.object({
 });
 
 export type DashboardOverview = z.infer<typeof dashboardOverviewSchema>;
+
+export const categoryAnalyticsSchema = z.array(
+	z.object({
+		id: z.uuid(),
+		label: z.string(),
+		productCount: z.number().int().nonnegative(),
+	}),
+);
+
+export type CategoryAnalytics = z.infer<typeof categoryAnalyticsSchema>;

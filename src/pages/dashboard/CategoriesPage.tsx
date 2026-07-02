@@ -7,8 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { productService, type BackendCategory } from "@/features/products/services/productService";
-import { useProductStore } from "@/features/products/stores/productStore";
+import { productService } from "@/features/products/services/productService";
 import {
 	Edit,
 	FolderKanban,
@@ -18,6 +17,8 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
+import type { CategoryAnalytics } from "@/features/dashboard/schemas/dashboardSchema";
+import { dashboardService } from "@/features/dashboard/services/dashboardService";
 
 const CATEGORIES_PER_PAGE = 8;
 
@@ -28,14 +29,14 @@ const cardMotion = {
 };
 
 const formatCount = (value: number) =>
-	new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+	new Intl.NumberFormat("en", {
+		notation: "compact",
+		maximumFractionDigits: 1,
+	}).format(value);
 
 export const CategoriesPage = () => {
 	useDocumentTitle(`Categories Management | ${CONFIG.APP_NAME}`);
 
-	const fetchStoreProducts = useProductStore((state) => state.fetchProducts);
-	const [products, setProducts] = useState<{ category: string }[]>([]);
-	const [categories, setCategories] = useState<BackendCategory[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const [sortBy, setSortBy] = useState("label-asc");
@@ -43,10 +44,14 @@ export const CategoriesPage = () => {
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
-	const [editingCategory, setEditingCategory] = useState<BackendCategory | null>(null);
+	const [editingCategory, setEditingCategory] = useState<
+		CategoryAnalytics[number] | null
+	>(null);
 	const [categoryName, setCategoryName] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [nameError, setNameError] = useState("");
+	const [categoryAnalytics, setCategoryAnalytics] =
+		useState<CategoryAnalytics | null>(null);
 
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [confirmTitle, setConfirmTitle] = useState("");
@@ -55,32 +60,18 @@ export const CategoriesPage = () => {
 	const [confirmDestructive, setConfirmDestructive] = useState(false);
 	const [confirmText, setConfirmText] = useState("Continue");
 
-	const categoryCounts = useMemo(() => {
-		const counts = new Map<string, number>();
-		for (const product of products) {
-			const key = (product.category || "Uncategorized").trim().toLowerCase();
-			counts.set(key, (counts.get(key) || 0) + 1);
-		}
-		return counts;
-	}, [products]);
-
 	const loadData = useCallback(async () => {
 		setLoading(true);
 		try {
-			const [allCategories, allProducts] = await Promise.all([
-				productService.getCategoriesPage({ page: 1, size: 1000 }),
-				fetchStoreProducts(true),
-			]);
-
-			setCategories(allCategories.items);
-			setProducts(allProducts.map((product) => ({ category: product.category })));
+			const response = await dashboardService.getCategories();
+			setCategoryAnalytics(response);
 		} catch (error) {
 			console.error("Failed to load categories page data:", error);
 			toast.error("Failed to refresh categories.");
 		} finally {
 			setLoading(false);
 		}
-	}, [fetchStoreProducts]);
+	}, []);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
@@ -109,7 +100,7 @@ export const CategoriesPage = () => {
 		setCreateOpen(true);
 	};
 
-	const openEdit = (category: BackendCategory) => {
+	const openEdit = (category: CategoryAnalytics[number]) => {
 		setEditingCategory(category);
 		setCategoryName(category.label);
 		setNameError("");
@@ -129,7 +120,7 @@ export const CategoriesPage = () => {
 			return false;
 		}
 
-		const duplicate = categories.some(
+		const duplicate = categoryAnalytics?.some(
 			(category) =>
 				category.label.trim().toLowerCase() === next.toLowerCase() &&
 				category.id !== editingCategory?.id,
@@ -155,11 +146,19 @@ export const CategoriesPage = () => {
 				: await productService.createCategory(nextLabel);
 
 			if (!result) {
-				toast.error(editingCategory ? "Failed to update category." : "Failed to create category.");
+				toast.error(
+					editingCategory
+						? "Failed to update category."
+						: "Failed to create category.",
+				);
 				return;
 			}
 
-			toast.success(editingCategory ? "Category updated successfully." : "Category created successfully.");
+			toast.success(
+				editingCategory
+					? "Category updated successfully."
+					: "Category created successfully.",
+			);
 			setCreateOpen(false);
 			setEditOpen(false);
 			resetForm();
@@ -172,13 +171,11 @@ export const CategoriesPage = () => {
 		}
 	};
 
-	const handleDelete = (category: BackendCategory) => {
-		const linkedProducts = categoryCounts.get(category.label.trim().toLowerCase()) || 0;
-
+	const handleDelete = (category: CategoryAnalytics[number]) => {
 		showConfirm(
 			"Delete Category",
-			linkedProducts > 0
-				? `Delete "${category.label}"? This category is currently linked to ${linkedProducts} product(s).`
+			category.productCount > 0
+				? `Delete "${category.label}"? This category is currently linked to ${category.productCount} product(s).`
 				: `Delete "${category.label}"? This action cannot be undone.`,
 			async () => {
 				try {
@@ -202,7 +199,8 @@ export const CategoriesPage = () => {
 
 	const normalizedSearch = search.trim().toLowerCase();
 	const filteredCategories = useMemo(() => {
-		const next = categories.filter((category) => {
+		if (!categoryAnalytics) return [];
+		const next = categoryAnalytics.filter((category) => {
 			if (!normalizedSearch) return true;
 			return (
 				category.id.toLowerCase().includes(normalizedSearch) ||
@@ -212,30 +210,35 @@ export const CategoriesPage = () => {
 
 		next.sort((a, b) => {
 			if (sortBy === "label-desc") return b.label.localeCompare(a.label);
-			if (sortBy === "products-desc") {
-				return (categoryCounts.get(b.label.trim().toLowerCase()) || 0) - (categoryCounts.get(a.label.trim().toLowerCase()) || 0);
-			}
-			if (sortBy === "products-asc") {
-				return (categoryCounts.get(a.label.trim().toLowerCase()) || 0) - (categoryCounts.get(b.label.trim().toLowerCase()) || 0);
-			}
+			if (sortBy === "products-desc")
+				return (b.productCount || 0) - (a.productCount || 0);
+			if (sortBy === "products-asc")
+				return (a.productCount || 0) - (b.productCount || 0);
 			return a.label.localeCompare(b.label);
 		});
 
 		return next;
-	}, [categories, categoryCounts, normalizedSearch, sortBy]);
+	}, [categoryAnalytics, normalizedSearch, sortBy]);
 
-	const totalPages = Math.max(1, Math.ceil(filteredCategories.length / CATEGORIES_PER_PAGE));
-	const safePage = Math.min(page, totalPages);
-	const paginatedCategories = filteredCategories.slice(
-		(safePage - 1) * CATEGORIES_PER_PAGE,
-		safePage * CATEGORIES_PER_PAGE,
+	const totalPages = Math.max(
+		1,
+		Math.ceil(filteredCategories.length / CATEGORIES_PER_PAGE),
 	);
+	const safePage = Math.min(page, totalPages);
+	const paginatedCategories = useMemo(() => {
+		return filteredCategories.slice(
+			(safePage - 1) * CATEGORIES_PER_PAGE,
+			safePage * CATEGORIES_PER_PAGE,
+		);
+	}, [filteredCategories, safePage]);
 
-	if (loading) {
+	if (loading || !categoryAnalytics) {
 		return (
-			<div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
+			<div className="flex min-h-105 flex-col items-center justify-center gap-3">
 				<div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-950" />
-				<p className="text-xs font-semibold text-slate-500">Loading categories...</p>
+				<p className="text-xs font-semibold text-slate-500">
+					Loading categories...
+				</p>
 			</div>
 		);
 	}
@@ -244,9 +247,15 @@ export const CategoriesPage = () => {
 		<div className="space-y-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div className="space-y-1">
-					<p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-800">Categories</p>
-					<h2 className="text-2xl font-playfair text-slate-950 sm:text-3xl">Category list</h2>
-					<p className="max-w-2xl text-sm text-slate-500">Manage catalog groupings and keep product navigation clean.</p>
+					<p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-800">
+						Categories
+					</p>
+					<h2 className="text-2xl font-playfair text-slate-950 sm:text-3xl">
+						Category list
+					</h2>
+					<p className="max-w-2xl text-sm text-slate-500">
+						Manage catalog groupings and keep product navigation clean.
+					</p>
 				</div>
 				<div className="flex flex-wrap gap-2">
 					<Button
@@ -257,7 +266,10 @@ export const CategoriesPage = () => {
 						<RefreshCw className="mr-1.5 size-4" />
 						Refresh
 					</Button>
-					<Button onClick={openCreate} className="h-10 rounded-xl bg-emerald-900 px-4 text-xs font-semibold text-white hover:bg-emerald-950">
+					<Button
+						onClick={openCreate}
+						className="h-10 rounded-xl bg-emerald-900 px-4 text-xs font-semibold text-white hover:bg-emerald-950"
+					>
 						<Plus className="mr-1.5 size-4" />
 						New Category
 					</Button>
@@ -268,7 +280,7 @@ export const CategoriesPage = () => {
 				{[
 					{
 						label: "Total Categories",
-						value: formatCount(categories.length),
+						value: formatCount(categoryAnalytics.length),
 						icon: FolderKanban,
 						accent: "bg-emerald-50 text-emerald-800",
 					},
@@ -283,11 +295,19 @@ export const CategoriesPage = () => {
 						>
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
-									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
-									<h3 className="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</h3>
-									<p className="mt-1 text-xs text-slate-500">Across the catalog</p>
+									<p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+										{metric.label}
+									</p>
+									<h3 className="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950">
+										{metric.value}
+									</h3>
+									<p className="mt-1 text-xs text-slate-500">
+										Across the catalog
+									</p>
 								</div>
-								<div className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ${metric.accent}`}>
+								<div
+									className={`grid size-12 shrink-0 place-items-center rounded-2xl ring-1 ring-inset ${metric.accent}`}
+								>
 									<Icon className="size-5" />
 								</div>
 							</div>
@@ -344,12 +364,12 @@ export const CategoriesPage = () => {
 
 					<div className="flex items-center gap-2">
 						<div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2 text-xs font-bold text-slate-500">
-							{filteredCategories.length === 0
+							{categoryAnalytics.length === 0
 								? "No categories found"
-								: `Showing ${Math.min(filteredCategories.length, (safePage - 1) * CATEGORIES_PER_PAGE + 1)}-${Math.min(
+								: `Showing ${Math.min(categoryAnalytics.length, (safePage - 1) * CATEGORIES_PER_PAGE + 1)}-${Math.min(
 										safePage * CATEGORIES_PER_PAGE,
 										filteredCategories.length,
-								  )} of ${filteredCategories.length}`}
+									)} of ${filteredCategories.length}`}
 						</div>
 						<div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50/50 p-0.5 select-none">
 							<Button
@@ -362,14 +382,16 @@ export const CategoriesPage = () => {
 							>
 								&larr;
 							</Button>
-							<span className="min-w-[55px] px-1.5 text-center text-[10px] font-bold text-slate-500">
+							<span className="min-w-13.75 px-1.5 text-center text-[10px] font-bold text-slate-500">
 								{safePage} / {totalPages}
 							</span>
 							<Button
 								variant="outline"
 								size="icon"
 								disabled={safePage === totalPages}
-								onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+								onClick={() =>
+									setPage((current) => Math.min(totalPages, current + 1))
+								}
 								className="h-7 w-7 rounded-md border-emerald-900/10 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-40"
 								title="Next page"
 							>
@@ -393,14 +415,15 @@ export const CategoriesPage = () => {
 						<tbody className="divide-y divide-slate-100">
 							{paginatedCategories.length === 0 ? (
 								<tr>
-									<td colSpan={5} className="px-6 py-14 text-center text-slate-400">
+									<td
+										colSpan={5}
+										className="px-6 py-14 text-center text-slate-400"
+									>
 										No categories match the current filters.
 									</td>
 								</tr>
 							) : (
 								paginatedCategories.map((category) => {
-									const linkedProducts = categoryCounts.get(category.label.trim().toLowerCase()) || 0;
-
 									return (
 										<tr key={category.id} className="hover:bg-slate-50/40">
 											<td className="px-6 py-4">
@@ -409,9 +432,13 @@ export const CategoriesPage = () => {
 														<FolderKanban className="size-4" />
 													</div>
 													<div>
-														<p className="text-sm font-semibold text-slate-950">{category.label}</p>
+														<p className="text-sm font-semibold text-slate-950">
+															{category.label}
+														</p>
 														<p className="text-[11px] text-slate-500">
-															{linkedProducts > 0 ? "Used in catalog" : "Not used yet"}
+															{category.productCount > 0
+																? "Used in catalog"
+																: "Not used yet"}
 														</p>
 													</div>
 												</div>
@@ -425,12 +452,12 @@ export const CategoriesPage = () => {
 											</td>
 											<td className="px-6 py-4">
 												<span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
-													{linkedProducts} products
+													{category.productCount} products
 												</span>
 											</td>
 											<td className="px-6 py-4 text-xs text-slate-500">
-												{linkedProducts > 0
-													? `Category appears in ${linkedProducts} product${linkedProducts > 1 ? "s" : ""}.`
+												{category.productCount > 0
+													? `Category appears in ${category.productCount} product${category.productCount > 1 ? "s" : ""}.`
 													: "Ready to assign in the product form."}
 											</td>
 											<td className="px-6 py-4 text-right">
@@ -465,7 +492,7 @@ export const CategoriesPage = () => {
 			</div>
 
 			{(createOpen || editOpen) && (
-				<div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs">
+				<div className="fixed inset-0 z-999 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs">
 					<div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
 						<button
 							onClick={() => {
@@ -488,7 +515,9 @@ export const CategoriesPage = () => {
 						</p>
 
 						<div className="space-y-2">
-							<label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category Label</label>
+							<label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+								Category Label
+							</label>
 							<Input
 								value={categoryName}
 								onChange={(e) => {
@@ -500,7 +529,11 @@ export const CategoriesPage = () => {
 									nameError ? "border-red-500 focus-visible:ring-red-500" : ""
 								}`}
 							/>
-							{nameError && <p className="text-xs font-semibold text-red-600">{nameError}</p>}
+							{nameError && (
+								<p className="text-xs font-semibold text-red-600">
+									{nameError}
+								</p>
+							)}
 						</div>
 
 						<div className="mt-8 flex justify-end gap-3 border-t border-slate-100 pt-6">
@@ -520,7 +553,11 @@ export const CategoriesPage = () => {
 								disabled={submitting}
 								className="h-10 rounded-xl bg-emerald-900 px-5 text-xs font-bold text-white hover:bg-emerald-950"
 							>
-								{submitting ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}
+								{submitting
+									? "Saving..."
+									: editingCategory
+										? "Save Changes"
+										: "Create Category"}
 							</Button>
 						</div>
 					</div>
