@@ -115,8 +115,8 @@ export const useCartStore = create<CartStore>()(
 );
 
 // Subscribe to authentication status changes to clear the cart on logout
-useAuthStore.subscribe((state) => {
-	if (state.status === AuthStatus.Unauthenticated) {
-		useCartStore.setState({ items: [] });
-	}
-});
+// useAuthStore.subscribe((state) => {
+// 	if (state.status === AuthStatus.Unauthenticated) {
+// 		useCartStore.setState({ items: [] });
+// 	}
+// });

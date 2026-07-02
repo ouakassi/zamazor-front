@@ -19,8 +19,9 @@ function App() {
 		didBootstrapRef.current = true;
 
 		const bootstrap = async () => {
-			const syncCommerceState = !window.location.pathname.startsWith("/dashboard");
-			await userService.fetchCurrentUser({ syncCommerceState });
+			const syncCommerceState =
+				!window.location.pathname.startsWith("/dashboard");
+			await userService.fetchCurrentUser({ syncCommerceState: false });
 			if (syncCommerceState && tokenManager.getAccessToken()) {
 				await useBookmarkStore.getState().syncWishlists();
 			}
