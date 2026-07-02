@@ -1,7 +1,7 @@
-import { type Product } from "@/core/config/productsData";
+import { type Product } from "@/features/products/types";
 import { API_ENDPOINTS } from "@/core/config/apiEndpoints";
 import { isSystemError } from "@/shared/types";
-import { CONFIG } from "@/core/config/constants";
+import CONFIG from "@/core/config/constants";
 import { privateApiRequest } from "@/shared/utils/axiosPrivate";
 import { publicApiRequest } from "@/shared/utils/axiosPublic";
 
@@ -22,6 +22,12 @@ export interface BackendProduct {
 	stockQuantity: number;
 	reservedQuantity: number;
 	category: BackendCategory;
+	flavor?: string | null;
+	badge?: string | null;
+	theme?: string | null;
+	benefits?: string[] | null;
+	ingredients?: string[] | null;
+	usage?: string | null;
 }
 
 interface PaginatedResponse<T> {
@@ -55,141 +61,53 @@ export interface PaginatedProductsResult {
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-interface RichMetadata {
-	category?: string;
-	flavor?: string;
-	badge?: string;
-	theme?: string;
-	description?: string;
-	benefits?: string[];
-	ingredients?: string[];
-	usage?: string;
+function resolveBackendImageUrl(imageUrl: string | null) {
+	if (!imageUrl) return "";
+
+	if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+		return imageUrl;
+	}
+
+	const cleanPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+	let serverRoot = "http://localhost:8080";
+	try {
+		serverRoot = new URL(CONFIG.API_BASE_URL).origin;
+	} catch {
+		if (!window.location.origin.includes("localhost")) {
+			serverRoot = window.location.origin;
+		}
+	}
+	return `${serverRoot}${cleanPath}`;
 }
 
-const productMetadataMap: Record<string, RichMetadata> = {
-	"greenfuel protein": {
-		flavor: "Vanilla matcha",
-		badge: "Best seller",
-		theme: "emerald",
-		benefits: [
-			"18g of organic pea & brown rice protein per serving",
-			"Infused with antioxidant-rich Japanese matcha",
-			"Zero artificial colors, sweeteners, or soy fillers",
-			"Smooth blendability with water, oat milk, or smoothies"
-		],
-		ingredients: ["Organic Pea Protein", "Organic Brown Rice Protein", "Ceremonial Matcha", "Natural Vanilla Flavor", "Stevia Leaf Extract", "Digestive Enzymes"],
-		usage: "Mix 1 scoop with 8-10 oz of cold water or plant-based milk. Shake or blend for 20 seconds. Best consumed within 45 minutes after training or as a morning protein boost."
-	},
-	"daily greens": {
-		flavor: "Citrus mint",
-		badge: "New formula",
-		theme: "lime",
-		benefits: [
-			"Contains spirulina, chlorella, wheatgrass, and organic kale",
-			"Probiotic complex for active digestive & gut support",
-			"Zero grassy aftertaste — flavored with real citrus and mint oils",
-			"Easy daily ritual for complete green nutrition"
-		],
-		ingredients: ["Organic Spirulina", "Organic Wheatgrass Powder", "Organic Kale", "Chlorella", "Lactobacillus Acidophilus (Probiotic)", "Peppermint Extract", "Lemon Extract"],
-		usage: "Stir 1 scoop into 8 oz of cold water. Drink daily first thing in the morning on an empty stomach for maximum absorption and digestion support."
-	},
-	"hydra charge": {
-		flavor: "Lemon salt",
-		badge: "Zero sugar",
-		theme: "amber",
-		benefits: [
-			"Real Pink Himalayan sea salt for clean sodium balance",
-			"Formulated with potassium, magnesium, and calcium",
-			"Zero added sugars or high-fructose corn syrups",
-			"Provides sustained cellular hydration and focus"
-		],
-		ingredients: ["Pink Himalayan Sea Salt", "Potassium Citrate", "Magnesium Glycinate", "Calcium Carbonate", "Natural Lemon Flavor", "B-Vitamin Complex", "Stevia Leaf Extract"],
-		usage: "Add 1 packet or scoop into 16 oz of cold water. Shake well. Sip before, during, or after exercise, or throughout hot days to maintain hydration."
-	},
-	"night repair": {
-		flavor: "Berry calm",
-		badge: "Rest support",
-		theme: "teal",
-		benefits: [
-			"Supports deep, natural sleep cycles without morning grogginess",
-			"Tart cherry extract helps naturally reduce muscle inflammation",
-			"Magnesium glycinate promotes muscle and nervous system relaxation",
-			"Delicious berry flavor makes a soothing bedtime hot or cold tea"
-		],
-		ingredients: ["Magnesium Glycinate", "L-Theanine", "Tart Cherry Extract", "Chamomile Flower Extract", "Natural Berry Flavor", "Melatonin (0.5mg)"],
-		usage: "Stir 1 scoop into 6-8 oz of warm or cold water 30-45 minutes before sleep. Sip slowly as you wind down for the night."
-	}
-};
+function normalizeCategoryLabel(label?: string) {
+	if (!label) return "Supplement";
+	if (label === "Proteins") return "Protein";
+	if (label === "Vitamins & Minerals") return "Greens";
+	if (label === "Pre-Workout & Energy") return "Energy";
+	if (label === "Performance & Recovery") return "Recovery";
+	if (label === "Health & Wellness") return "Wellness";
+	return label;
+}
 
-export function mapBackendProduct(backendProd: BackendProduct): Product {
-	const formattedPrice = `${Number(backendProd.price).toFixed(2)} MAD`;
-	const key = backendProd.name.toLowerCase();
-	const meta = productMetadataMap[key];
-
-	let imageUrl = backendProd.imageUrl || "";
-	if (imageUrl && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-		const cleanPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
-		let serverRoot = "http://localhost:8080";
-		try {
-			serverRoot = new URL(CONFIG.API_BASE_URL).origin;
-		} catch {
-			if (!window.location.origin.includes("localhost")) {
-				serverRoot = window.location.origin;
-			}
-		}
-		imageUrl = `${serverRoot}${cleanPath}`;
-	}
-
-	if (!imageUrl) {
-		let serverRoot = "http://localhost:8080";
-		try {
-			serverRoot = new URL(CONFIG.API_BASE_URL).origin;
-		} catch {
-			if (!window.location.origin.includes("localhost")) {
-				serverRoot = window.location.origin;
-			}
-		}
-		if (key.includes("greens") || key.includes("shield") || key.includes("vitamin") || key.includes("omega") || key.includes("ashwagandha")) {
-			imageUrl = `${serverRoot}/images/product_greens.png`;
-		} else if (key.includes("hydra") || key.includes("pre-workout") || key.includes("probiotic") || key.includes("energy")) {
-			imageUrl = `${serverRoot}/images/product_hydra.png`;
-		} else if (key.includes("recovery") || key.includes("night") || key.includes("bcaa") || key.includes("collagen") || key.includes("casein") || key.includes("creatine")) {
-			imageUrl = `${serverRoot}/images/product_recovery.png`;
-		} else {
-			imageUrl = `${serverRoot}/images/product_protein.png`;
-		}
-	}
-
+function mapBackendProduct(backendProd: BackendProduct): Product {
 	return {
 		id: backendProd.id,
 		name: backendProd.name,
 		createdAt: backendProd.createdAt,
-		category: (() => {
-			const label = backendProd.category ? backendProd.category.label : (meta?.category || "Supplement");
-			if (label === "Proteins") return "Protein";
-			if (label === "Vitamins & Minerals") return "Greens";
-			if (label === "Pre-Workout & Energy") return "Energy";
-			if (label === "Performance & Recovery") return "Recovery";
-			if (label === "Health & Wellness") return "Wellness";
-			return label;
-		})(),
-		price: formattedPrice,
-		flavor: meta?.flavor || "Pure & clean",
-		badge: meta?.badge || "Formulated",
-		theme: meta?.theme || "emerald",
-		image: imageUrl,
-		description: backendProd.description || meta?.description || "",
+		category: normalizeCategoryLabel(backendProd.category?.label),
+		price: `${Number(backendProd.price).toFixed(2)} MAD`,
+		flavor: backendProd.flavor || undefined,
+		badge: backendProd.badge || undefined,
+		theme: backendProd.theme || undefined,
+		image: resolveBackendImageUrl(backendProd.imageUrl),
+		description: backendProd.description || "",
 		stock: backendProd.stockQuantity,
-		benefits: meta?.benefits || [
-			"Premium scientifically validated formula",
-			"Naturally sweetened, zero artificial colors",
-			"Lab tested for active purity and safety",
-		],
-		ingredients: meta?.ingredients || ["Active formula blend"],
-		usage: meta?.usage || "Mix 1 scoop with 8 oz of cold water daily.",
+		benefits: backendProd.benefits || undefined,
+		ingredients: backendProd.ingredients || undefined,
+		usage: backendProd.usage || undefined,
 	};
 }
-
 function extractProductItems(response: unknown): BackendProduct[] {
 	if (Array.isArray(response)) {
 		return response as BackendProduct[];

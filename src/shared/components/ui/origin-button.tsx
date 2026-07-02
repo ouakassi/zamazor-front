@@ -311,4 +311,3 @@ const OriginButton = React.forwardRef<HTMLButtonElement, OriginButtonProps>(
 OriginButton.displayName = "OriginButton";
 
 export { OriginButton };
-export type { OriginButtonProps };

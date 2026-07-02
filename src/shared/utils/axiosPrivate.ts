@@ -4,7 +4,7 @@ import axios, {
 	type InternalAxiosRequestConfig,
 } from "axios";
 import { tokenManager } from "@/features/auth/globals/tokenManager";
-import { CONFIG } from "@/core/config/constants";
+import CONFIG from "@/core/config/constants";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { notify } from "@/lib/notify";
 import { coreApiRequest, type ApiRequestOptions } from "./coreApiRequest";
@@ -93,9 +93,7 @@ axiosPrivate.interceptors.response.use(
 			);
 
 			if (!isPublic) {
-				import("@/core/routes/router").then((m) => {
-					m.default.navigate(APP_ROUTES.AUTH.LOGIN, { replace: true });
-				});
+				window.location.replace(APP_ROUTES.AUTH.LOGIN);
 			}
 
 			if (tokenManager.getAccessToken()) {

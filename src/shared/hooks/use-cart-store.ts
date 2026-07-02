@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 import { cartService } from "@/features/cart/services/cartService";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { AuthStatus } from "@/features/auth/types";
 import { parsePrice } from "@/shared/utils/price";
 
-export interface CartItem {
+interface CartItem {
 	product: Product;
 	quantity: number;
 }
@@ -27,6 +27,15 @@ export const useCartStore = create<CartStore>()(
 		(set, get) => ({
 			items: [],
 			addItem: async (product, quantity = 1) => {
+				const auth = useAuthStore.getState();
+				if (auth.status === AuthStatus.Authenticated) {
+					const saved = await cartService.addToCart(product.id, quantity);
+					if (saved) {
+						await get().syncWithBackend();
+					}
+					return;
+				}
+
 				const currentItems = get().items;
 				const existingItemIndex = currentItems.findIndex((item) => item.product.id === product.id);
 
@@ -37,53 +46,55 @@ export const useCartStore = create<CartStore>()(
 				} else {
 					set({ items: [...currentItems, { product, quantity }] });
 				}
-
-				// Sync with backend if authenticated
-				const auth = useAuthStore.getState();
-				if (auth.status === AuthStatus.Authenticated) {
-					await cartService.addToCart(product.id, quantity);
-				}
 			},
 			removeItem: async (productId) => {
-				set({ items: get().items.filter((item) => item.product.id !== productId) });
-
-				// Sync with backend if authenticated
 				const auth = useAuthStore.getState();
 				if (auth.status === AuthStatus.Authenticated) {
-					await cartService.removeFromCart(productId);
+					const removed = await cartService.removeFromCart(productId);
+					if (removed) {
+						await get().syncWithBackend();
+					}
+					return;
 				}
+
+				set({ items: get().items.filter((item) => item.product.id !== productId) });
 			},
 			updateQuantity: async (productId, quantity) => {
+				const auth = useAuthStore.getState();
+				if (auth.status === AuthStatus.Authenticated) {
+					const saved =
+						quantity > 0
+							? await cartService.updateCartItemQuantity(productId, quantity)
+							: await cartService.removeFromCart(productId);
+					if (saved) {
+						await get().syncWithBackend();
+					}
+					return;
+				}
+
 				const currentItems = get().items;
 				const updatedItems = currentItems
 					.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
 					.filter((item) => item.quantity > 0);
 				set({ items: updatedItems });
-
-				// Sync with backend if authenticated: call updateCartItemQuantity
-				const auth = useAuthStore.getState();
-				if (auth.status === AuthStatus.Authenticated) {
-					if (quantity > 0) {
-						await cartService.updateCartItemQuantity(productId, quantity);
-					} else {
-						await cartService.removeFromCart(productId);
-					}
-				}
 			},
 			clearCart: async () => {
-				set({ items: [] });
-
-				// Sync with backend if authenticated
 				const auth = useAuthStore.getState();
 				if (auth.status === AuthStatus.Authenticated) {
-					await cartService.clearCart();
+					const cleared = await cartService.clearCart();
+					if (cleared) {
+						set({ items: [] });
+					}
+					return;
 				}
+
+				set({ items: [] });
 			},
 			syncWithBackend: async () => {
 				const auth = useAuthStore.getState();
 				if (auth.status === AuthStatus.Authenticated) {
 					const backendItems = await cartService.getCart();
-					if (backendItems) {
+					if (backendItems !== null) {
 						set({ items: backendItems });
 					}
 				}

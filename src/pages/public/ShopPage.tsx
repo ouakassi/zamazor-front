@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { APP_ROUTES } from "@/core/routes/paths";
 import { useLanguage } from "@/shared/context/LanguageContext";
-import type { Product } from "@/core/config/productsData";
+import type { Product } from "@/features/products/types";
 
 
 type PriceFilter = "all" | "under-25" | "25-40" | "over-40";
